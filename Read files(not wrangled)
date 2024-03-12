@@ -11,9 +11,13 @@ country_codes <- read_csv("country_codes.csv")
 country_indicators <- read_csv("country_indicators.csv")
 goal_file <- read_csv("sdr_fd5e4b5a.csv")
 
-glimpse(country_codes)
-
+# Filtering other languages and some country codes
 country_codes <- country_codes |> select('...1', 'Region Code (M49)', 'Region Name_en (M49)', 'Sub-region Name_en (M49)', 'Intermediate Region Name_en (M49)', 'Country or Area_en (M49)', 'Least Developed Countries (LDC) (M49)', 'Land Locked Developing Countries (LLDC) (M49)', 'Small Island Developing States (SIDS) (M49)', `Developed / Developing Countries (M49)`)
+
+# rename(New_Name = Old_Name)
+
+# Renaming variables
+country_codes <- country_codes |> rename("country_number" = '...1', "region_code" = 'Region Code (M49)', "region_name" = 'Region Name_en (M49)', "subregion" = 'Sub-region Name_en (M49)', "intermediate_name" = 'Intermediate Region Name_en (M49)', "country_name" = 'Country or Area_en (M49)', "LDC" = 'Least Developed Countries (LDC) (M49)', "locked_LDC" = 'Land Locked Developing Countries (LLDC) (M49)', "small_island_developing" = 'Small Island Developing States (SIDS) (M49)', "development" = `Developed / Developing Countries (M49)`)
 
 glimpse(goal_file)
 ```
