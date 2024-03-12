@@ -21,3 +21,9 @@ country_codes <- country_codes |> rename("country_number" = '...1', "region_code
 
 glimpse(country_codes)
 ```
+
+
+```{r}
+#clean the rows in which country_name is NA
+clean_counrty_codes <- country_codes |> filter(!is.na(country_name))
+```
