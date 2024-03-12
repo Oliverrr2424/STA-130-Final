@@ -1,0 +1,10 @@
+```{r}
+library(readr)
+
+country_codes <- read_csv("country_codes.csv")
+country_indicators <- read_csv("country_indicators.csv")
+goal_file <- read_csv("sdr_fd5e4b5a.csv")
+
+glimpse(goal_file)
+```
+
