@@ -1,0 +1,23 @@
+# Setup code
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+library(readr)
+
+country_codes <- read_csv("country_codes.csv")
+country_indicators <- read_csv("country_indicators.csv")
+goal_file <- read_csv("sdr_fd5e4b5a.csv")
+
+country_codes <- country_codes |> select(`ISO3 (geonames)`,'Region Code (M49)', 'Region Name_en (M49)', 'Sub-region Name_en (M49)', 'Intermediate Region Name_en (M49)', 'Country or Area_en (M49)', 'Least Developed Countries (LDC) (M49)', 'Land Locked Developing Countries (LLDC) (M49)', 'Small Island Developing States (SIDS) (M49)', `Developed / Developing Countries (M49)`) |> rename(country_code_iso3 = "ISO3 (geonames)")
+
+country_indicators <- country_indicators |> select(iso3, wbi_income_group) |> rename(country_code_iso3 = iso3)
+
+code_indicators_merged <- merge(country_indicators,country_codes,by="country_code_iso3")
+
+glimpse(code_indicators_merged)
+```
+
+## code_indicators_merged is the merged file for iso3 code, country names, continents, development state and income level
