@@ -1,0 +1,85 @@
+# Setup code
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+set.seed(21374)
+# lucky please
+```
+
+All right summary of the data set objects:
+**full_merged** is the total world data with income levels, developing state and SDG scores for their respective countries
+
+**african**, **american**, **asian**, **european** and **oceanian** divides the countries into their respective continents as listed on the *country_codes.csv* file
+
+**high_income**, **upper_mid**, **lower_mid**, **low_income** and **NA_income** divides the countries into their respective income levels as listed on the *sdr_fd5e4b5a.csv* or *goal_file* 
+[Note: NA income means that the income level of that country is not listed]
+
+*Stuff still needed*
+1: NA values found in SDG index scores
+2: NA values found in income levels
+3: Understand what Percentage missing values mean
+
+*What to do next:*
+1: Decide how to filter the NA values
+
+```{r}
+library(readr)
+
+country_codes <- read_csv("country_codes.csv")
+country_indicators <- read_csv("country_indicators.csv")
+goal_file <- read_csv("sdr_fd5e4b5a.csv")
+
+#clean the rows in which country_name is NA
+country_codes <- country_codes |> filter(!is.na('Country or Area_en (M49)'))
+
+# taking only rows we need and renaming them
+
+country_codes <- country_codes |> select(`ISO3 (geonames)`, 'Region Name_en (M49)', 'Sub-region Name_en (M49)', 'Country or Area_en (M49)', `Developed / Developing Countries (M49)`)                |> rename(country_code_iso3 = "ISO3 (geonames)", country_names = 'Country or Area_en (M49)', continent = 'Region Name_en (M49)', subcontinent = "Sub-region Name_en (M49)", development_state = 'Developed / Developing Countries (M49)')
+
+country_indicators <- country_indicators |> select(iso3, wbi_income_group) |> rename(country_code_iso3 = iso3, income_group = wbi_income_group)
+
+
+# Filter the goal file here [what do we need (scores and stuff)]
+goal_file <- goal_file |> select(`2023 SDG Index Score`, `2023 SDG Index Rank`, `Percentage missing values`, "Country Code ISO3") |> rename("country_code_iso3" = "Country Code ISO3")
+
+# Merging code here: filter goal files before this line
+
+full_merged <- merge(country_indicators,country_codes,by="country_code_iso3")
+full_merged <- merge(full_merged, goal_file, by="country_code_iso3")
+
+# assigning scores to the income levels $income_score
+## low_income: 0
+## lower_mid : 1/3
+## upper_mid : 2/3
+## high : 1
+
+full_merged <- full_merged |> mutate(income_score = case_when(
+                income_group == "Low income" ~ 0,
+                income_group == "Lower middle income" ~ 1/3,
+                income_group == "Upper middle income" ~ 2/3,
+                income_group == "High income" ~ 1,
+))
+
+# reordering columns
+full_merged <- full_merged[, c(1,5,3,2,7,8,9,10,4,6)]
+
+glimpse(full_merged)
+
+## full_merged is the merged file for all 3 files
+## the goals (SDG scores) still need to be filtered (do it before the merging code)
+
+## dividing into continents:
+african <- full_merged |> filter(continent == 'Africa')
+asian <- full_merged |> filter(continent == 'Asia')
+american <- full_merged |> filter(continent == 'Americas')
+oceanian <- full_merged |> filter(continent == 'Oceania')
+european <- full_merged |> filter(continent == 'Europe')
+
+## dividing into income groups
+low_income <- full_merged |> filter(income_group == "Low income")
+lower_mid <- full_merged |> filter(income_group == "Lower middle income")
+upper_mid <- full_merged |> filter(income_group == "Upper middle income")
+high_income <- full_merged |> filter(income_group == "High income")
+NA_income <- full_merged |> filter(is.na(income_group))
+
+```
