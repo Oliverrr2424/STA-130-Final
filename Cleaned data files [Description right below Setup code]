@@ -29,14 +29,21 @@ country_codes <- read_csv("country_codes.csv")
 country_indicators <- read_csv("country_indicators.csv")
 goal_file <- read_csv("sdr_fd5e4b5a.csv")
 
-#clean the rows in which country_name is NA
+# clean the rows in which country_name is NA
 country_codes <- country_codes |> filter(!is.na('Country or Area_en (M49)'))
 
 # taking only rows we need and renaming them
 
-country_codes <- country_codes |> select(`ISO3 (geonames)`, 'Region Name_en (M49)', 'Sub-region Name_en (M49)', 'Country or Area_en (M49)', `Developed / Developing Countries (M49)`)                |> rename(country_code_iso3 = "ISO3 (geonames)", country_names = 'Country or Area_en (M49)', continent = 'Region Name_en (M49)', subcontinent = "Sub-region Name_en (M49)", development_state = 'Developed / Developing Countries (M49)')
-
-country_indicators <- country_indicators |> select(iso3, wbi_income_group) |> rename(country_code_iso3 = iso3, income_group = wbi_income_group)
+country_codes <- country_codes |> select(`ISO3 (geonames)`,
+                                         'Region Name_en (M49)',
+                                         'Sub-region Name_en (M49)',
+                                         'Country or Area_en (M49)',
+                                         `Developed / Developing Countries (M49)`) |>
+  rename(country_code_iso3 = "ISO3 (geonames)",
+        country_names = 'Country or Area_en (M49)',
+        continent = 'Region Name_en (M49)',
+        subcontinent = "Sub-region Name_en (M49)",
+        development_state = 'Developed / Developing Countries (M49)')
 
 
 # Filter the goal file here [what do we need (scores and stuff)]
