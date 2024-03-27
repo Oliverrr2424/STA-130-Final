@@ -9,9 +9,22 @@ library(partykit)
 
 ```{r}
 #classifcation tree
-tree_model <- rpart(wbi_income_group ~ continent, data = full_merged)
+tree_model <- rpart(income_group ~ continent, data = full_merged)
 
 plot(as.party(tree_model),gp=gpar(cex=1),type="simple")
+```
+
+```{r}
+# Bar charts of the proportions
+## Still need to convert the y axis into percentages though, ask TA on friday
+ 
+ggplot(data = full_merged, aes(x= world, fill = income_group)) +
+  geom_bar() +
+  labs(x = 'Continents', title = 'World proportion')
+  
+ggplot(data = full_merged, aes(x= continent, fill = income_group)) +
+  geom_bar() +
+  labs(x = 'Continents', title = "Continents proportions")
 ```
 
 ```{r}
@@ -22,4 +35,26 @@ proportions <- full_merged %>%
   summarise(proportion_high_income = mean(wbi_income_group == "High income"))
 
 glimpse(proportions)
+
+# Bar proportions (Trying to turn this into a bar graph but I am stuck :()
+#proportion variable
+
+bar_proportions <- full_merged %>%
+  group_by(continent, income_group) %>% 
+  summarise(n=n())
+
+head(bar_proportions)
+
+bar_proportions <- tibble(bar_proportions %>%
+  mutate(continent_count = 
+             case_when(
+               continent == 'Africa' ~ 54,
+               continent == 'Americas' ~ 35,
+               continent == 'Asia' ~ 49,
+               continent == 'Europe' ~ 43,
+               continent == 'Oceania' ~ 14
+             )) %>%
+  summarise(n=n, income_group = income_group, 'proportion/continent' = n/continent_count, 'proportion/world total' = n/195))
+
+head(bar_proportions)
 ```
