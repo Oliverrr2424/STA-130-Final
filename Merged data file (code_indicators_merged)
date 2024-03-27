@@ -22,8 +22,8 @@ goal_file <- goal_file |> rename("country_code_iso3" = "Country Code ISO3")
 
 # Merging code here: filter goal files before this line
 
-full_merged <- merge(country_indicators,country_codes,by="country_code_iso3")
-full_merged <- merge(full_merged, goal_file, by="country_code_iso3")
+full_merged <- merge(country_indicators,country_codes,by="Country Code ISO3")
+full_merged <- merge(full_merged, goal_file, by="Country Code ISO3")
 
 
 glimpse(full_merged)
