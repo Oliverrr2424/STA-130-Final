@@ -33,6 +33,12 @@ ggplot(data = full_merged, aes(x= continent, fill = income_group)) +
 ```
 
 ```{r}
+# Scatter plot with linear regression lines
+full_merged |> ggplot(aes(y=index_score, x=income_score))+geom_point()+ facet_wrap(~continent) +geom_smooth(method ="lm", se=FALSE) + labs(title= 'Divided into continents')
+full_merged |> ggplot(aes(y=index_score, x=income_score, color = continent))+geom_point() +geom_smooth(method ="lm", se=FALSE) + labs(title= 'World Total')
+```
+
+```{r}
 #proportion variable
 
 proportions <- full_merged %>%
