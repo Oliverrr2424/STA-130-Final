@@ -29,7 +29,7 @@ country_codes <- read_csv("country_codes.csv")
 country_indicators <- read_csv("country_indicators.csv")
 goal_file <- read_csv("sdr_fd5e4b5a.csv")
 
-# clean the rows in which country_name is NA
+#clean the rows in which country_name is NA
 country_codes <- country_codes |> filter(!is.na('Country or Area_en (M49)'))
 
 # taking only rows we need and renaming them
@@ -45,19 +45,23 @@ country_codes <- country_codes |> select(`ISO3 (geonames)`,
         subcontinent = "Sub-region Name_en (M49)",
         development_state = 'Developed / Developing Countries (M49)')
 
-# filter the country indicator
-country_indicators <- country_indicators |> select(iso3, wbi_income_group) |> rename(country_code_iso3 = iso3)
+country_indicators <- country_indicators |> select(iso3, wbi_income_group) |> rename(country_code_iso3 = iso3, income_group = wbi_income_group)
+
 
 # Filter the goal file here [what do we need (scores and stuff)]
-goal_file <- goal_file |> select(`2023 SDG Index Score`, `2023 SDG Index Rank`, `Percentage missing values`, "Country Code ISO3") |> rename("country_code_iso3" = "Country Code ISO3")
+goal_file <- goal_file |>
+  select(`2023 SDG Index Score`,
+         `2023 SDG Index Rank`,
+         `Percentage missing values`,
+         'Country Code ISO3') |>
+  rename("country_code_iso3" = "Country Code ISO3",
+         index_score = '2023 SDG Index Score',
+         index_rank = '2023 SDG Index Rank')
 
 # Merging code here: filter goal files before this line
 
 full_merged <- merge(country_indicators,country_codes,by="country_code_iso3")
 full_merged <- merge(full_merged, goal_file, by="country_code_iso3")
-
-#clearing NAs in wbi_income_group.
-full_merged <- full_merged |> filter(!is.na(wbi_income_group))
 
 # assigning scores to the income levels $income_score
 ## low_income: 0
@@ -66,15 +70,17 @@ full_merged <- full_merged |> filter(!is.na(wbi_income_group))
 ## high : 1
 
 full_merged <- full_merged |> mutate(income_score = case_when(
-                wbi_income_group == "Low income" ~ 0,
-                wbi_income_group == "Lower middle income" ~ 1/3,
-                wbi_income_group == "Upper middle income" ~ 2/3,
-                wbi_income_group == "High income" ~ 1,
+                income_group == "Low income" ~ 0,
+                income_group == "Lower middle income" ~ 1/3,
+                income_group == "Upper middle income" ~ 2/3,
+                income_group == "High income" ~ 1,
 ))
 
 # reordering columns
 full_merged <- full_merged[, c(1,5,3,2,7,8,9,10,4,6)]
 
+# adding back world variable (I'm getting confused in the plots)
+full_merged <- full_merged |> mutate(world = "world")
 glimpse(full_merged)
 
 ## full_merged is the merged file for all 3 files
@@ -88,10 +94,10 @@ oceanian <- full_merged |> filter(continent == 'Oceania')
 european <- full_merged |> filter(continent == 'Europe')
 
 ## dividing into income groups
-low_income <- full_merged |> filter(wbi_income_group == "Low income")
-lower_mid <- full_merged |> filter(wbi_income_group == "Lower middle income")
-upper_mid <- full_merged |> filter(wbi_income_group == "Upper middle income")
-high_income <- full_merged |> filter(wbi_income_group == "High income")
-NA_income <- full_merged |> filter(is.na(wbi_income_group))
+low_income <- full_merged |> filter(income_group == "Low income")
+lower_mid <- full_merged |> filter(income_group == "Lower middle income")
+upper_mid <- full_merged |> filter(income_group == "Upper middle income")
+high_income <- full_merged |> filter(income_group == "High income")
+NA_income <- full_merged |> filter(is.na(income_group))
 
 ```
