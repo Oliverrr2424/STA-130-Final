@@ -12,5 +12,14 @@ library(partykit)
 tree_model <- rpart(wbi_income_group ~ continent, data = full_merged)
 
 plot(as.party(tree_model),gp=gpar(cex=1),type="simple")
+```
 
+```{r}
+#proportion variable
+
+proportions <- full_merged %>%
+  group_by(continent) %>%
+  summarise(proportion_high_income = mean(wbi_income_group == "High income"))
+
+glimpse(proportions)
 ```
