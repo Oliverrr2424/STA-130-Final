@@ -89,6 +89,6 @@ low_income <- full_merged |> filter(wbi_income_group == "Low income")
 lower_mid <- full_merged |> filter(wbi_income_group == "Lower middle income")
 upper_mid <- full_merged |> filter(wbi_income_group == "Upper middle income")
 high_income <- full_merged |> filter(wbi_income_group == "High income")
-NA_income <- full_merged |> filter(is.na(income_group))
+NA_income <- full_merged |> filter(is.na(wbi_income_group))
 
 ```
