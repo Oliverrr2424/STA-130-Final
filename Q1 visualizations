@@ -9,9 +9,14 @@ library(partykit)
 
 ```{r}
 #classifcation tree
-tree_model <- rpart(income_group ~ continent, data = full_merged)
 
-plot(as.party(tree_model),gp=gpar(cex=1),type="simple")
+## I uh, which do we do? second one needs pruning
+
+tree_model_1 <- rpart(income_group ~ continent, (data = full_merged))
+plot(as.party(tree_model_1),gp=gpar(cex=0.9),type="simple")
+
+tree_model_2 <- rpart(income_group ~ continent + index_score, (data = full_merged))
+plot(as.party(tree_model_2),gp=gpar(cex=0.44),type="simple", method="class")
 ```
 
 ```{r}
