@@ -56,6 +56,9 @@ goal_file <- goal_file |> select(`2023 SDG Index Score`, `2023 SDG Index Rank`, 
 full_merged <- merge(country_indicators,country_codes,by="country_code_iso3")
 full_merged <- merge(full_merged, goal_file, by="country_code_iso3")
 
+#clearing NAs in wbi_income_group.
+full_merged <- full_merged |> filter(!is.na(wbi_income_group))
+
 # assigning scores to the income levels $income_score
 ## low_income: 0
 ## lower_mid : 1/3
