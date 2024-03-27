@@ -45,6 +45,8 @@ country_codes <- country_codes |> select(`ISO3 (geonames)`,
         subcontinent = "Sub-region Name_en (M49)",
         development_state = 'Developed / Developing Countries (M49)')
 
+# filter the country indicator
+country_indicators <- country_indicators |> select(iso3, wbi_income_group) |> rename(country_code_iso3 = iso3)
 
 # Filter the goal file here [what do we need (scores and stuff)]
 goal_file <- goal_file |> select(`2023 SDG Index Score`, `2023 SDG Index Rank`, `Percentage missing values`, "Country Code ISO3") |> rename("country_code_iso3" = "Country Code ISO3")
