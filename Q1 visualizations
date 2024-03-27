@@ -4,7 +4,10 @@
 #packages
 library(rpart)
 library(partykit)
+```
 
+
+```{r}
 #classifcation tree
 tree_model <- rpart(wbi_income_group ~ continent, data = full_merged)
 
