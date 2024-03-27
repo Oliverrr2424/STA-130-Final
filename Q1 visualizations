@@ -1,0 +1,13 @@
+
+
+```{r}
+#packages
+library(rpart)
+library(partykit)
+
+#classifcation tree
+tree_model <- rpart(wbi_income_group ~ continent, data = full_merged)
+
+plot(as.party(tree_model),gp=gpar(cex=1),type="simple")
+
+```
