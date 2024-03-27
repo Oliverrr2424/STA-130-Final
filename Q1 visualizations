@@ -8,15 +8,15 @@ library(partykit)
 
 
 ```{r}
-#classifcation tree
+#classification tree
 
 ## I uh, which do we do? second one needs pruning
 
-tree_model_1 <- rpart(income_group ~ continent, (data = full_merged))
+tree_model_1 <- rpart(continent ~ income_group, (data = full_merged))
 plot(as.party(tree_model_1),gp=gpar(cex=0.9),type="simple")
 
-tree_model_2 <- rpart(income_group ~ continent + index_score, (data = full_merged))
-plot(as.party(tree_model_2),gp=gpar(cex=0.44),type="simple", method="class")
+tree_model_2 <- rpart(continent ~ income_group + index_score, (data = full_merged))
+plot(as.party(tree_model_2),gp=gpar(cex=0.6),type="simple", method="class")
 ```
 
 ```{r}
