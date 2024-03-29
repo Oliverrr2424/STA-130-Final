@@ -1,0 +1,11 @@
+```{r}
+# Box plots
+
+
+full_merged$income_group <- factor(full_merged$income_group, levels=c("Low income", "Lower middle income", "Upper middle income", "High income"))
+
+full_merged |> ggplot(aes(y=index_score, x=income_group))+geom_boxplot() +geom_smooth(method ="lm", se=FALSE) + labs(title= 'Income group and Index score averages', y= "Index Score", x = "Income group")
+
+full_merged |> ggplot(aes(y=index_score, x=continent))+geom_boxplot() +geom_smooth(method ="lm", se=FALSE) + labs(title= 'Continent and index score averages', y= "Index Score", x = " Continent")
+
+```
