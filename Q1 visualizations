@@ -19,18 +19,6 @@ tree_model_2 <- rpart(continent ~ income_group + index_score, (data = full_merge
 plot(as.party(tree_model_2),gp=gpar(cex=0.6),type="simple", method="class")
 ```
 
-```{r}
-# Bar charts of the proportions
-## Still need to convert the y axis into percentages though, ask TA on friday
- 
-ggplot(data = full_merged, aes(x= world, fill = income_group)) +
-  geom_bar() +
-  labs(x = 'Continents', title = 'World proportion')
-  
-ggplot(data = full_merged, aes(x= continent, fill = income_group)) +
-  geom_bar() +
-  labs(x = 'Continents', title = "Continents proportions")
-```
 
 ```{r}
 # Scatter plot with linear regression lines
@@ -51,6 +39,7 @@ glimpse(proportions)
 
 
 **Distribution of income levels visualizations (Bars and pies)**
+
 ```{r}
 # Pie chart of the world
 full_merged %>% 
@@ -79,8 +68,15 @@ bar_proportions <- tibble(bar_proportions %>%
                continent == 'Asia' ~ 42,
                continent == 'Europe' ~ 39,
                continent == 'Oceania' ~ 4
-             )) %>%
-  summarise(n=n, income_group = income_group, 'proportion/continent' = n/continent_count, 'proportion/world total' = n/155, continent_count = continent_count, planet = 'world'))
+             ), 
+         income_count = 
+           case_when(
+             income_group == 'Low income' ~ 22,
+             income_group == 'Lower middle income' ~ 41,
+             income_group == 'Upper middle income' ~ 43,
+             income_group == 'High income' ~ 49,
+           )) %>%
+  summarise(n=n, income_group = income_group, 'proportion/continent' = n/continent_count, 'proportion/world total' = n/155, continent_count = continent_count, planet = 'world', income_count = income_count))
 
 bar_proportions$income_group <- factor(bar_proportions$income_group, levels=c('High income', 'Upper middle income', 'Lower middle income', 'Low income'))
 
@@ -95,7 +91,15 @@ ggplot(data = bar_proportions, aes(x= continent, fill = income_group,  y= n/cont
 
 ggplot(data = bar_proportions, aes(x= continent, fill = income_group,  y= n)) +
   geom_bar(position = 'stack', stat='identity') +
-  labs(x = 'Continents', y= 'Count', title = "Continents income levels distribution")
+  labs(x = 'Continents', y= 'Count', title = "Income levels distribution across continents")
+
+ggplot(data = bar_proportions, aes(x= income_group, fill = continent,  y= n/income_count)) +
+  geom_bar(position = 'stack', stat='identity') +
+  labs(x = 'Continents', y= 'Percentage of income level', title = "Income levels distribution across continents") + scale_y_continuous(labels = scales::percent)
+
+ggplot(data = bar_proportions, aes(x= income_group, fill = continent,  y= n)) +
+  geom_bar(position = 'stack', stat='identity') +
+  labs(x = 'Continents', y= 'Count', title = "Income levels counts across continents") 
 
 
 head(bar_proportions)
