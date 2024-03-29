@@ -1,11 +1,23 @@
 ```{r}
-# Box plots
-
 
 full_merged$income_group <- factor(full_merged$income_group, levels=c("Low income", "Lower middle income", "Upper middle income", "High income"))
 
-full_merged |> ggplot(aes(y=index_score, x=income_group))+geom_boxplot() +geom_smooth(method ="lm", se=FALSE) + labs(title= 'Income group and Index score averages', y= "Index Score", x = "Income group")
+sdg_income_means <- tibble(
+  income_group = c("Low income", "Lower middle income", "Upper middle income", "High income"),
+  sdg_mean = c(
+    mean(low_income$index_score),
+    mean(lower_mid$index_score),
+    mean(upper_mid$index_score),
+    mean(high_income$index_score)
+  )
+)
+  
 
-full_merged |> ggplot(aes(y=index_score, x=continent))+geom_boxplot() +geom_smooth(method ="lm", se=FALSE) + labs(title= 'Continent and index score averages', y= "Index Score", x = " Continent")
+ggplot(data = full_merged, aes(y=index_score, x=income_group, fill=income_group))+geom_boxplot() +
+ geom_line(data = sdg_income_means,
+            aes(x = as.factor(income_group), y = sdg_mean, group = 1), size = 1) +
+  labs(title= 'Income group and Index score averages', y= "Index Score", x = "Income group")
+
+full_merged |> ggplot(aes(y=index_score, x=continent, fill=continent))+geom_boxplot() + labs(title= 'Continent and index score averages', y= "Index Score", x = " Continent")
 
 ```
