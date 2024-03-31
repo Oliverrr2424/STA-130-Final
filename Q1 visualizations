@@ -27,6 +27,20 @@ full_merged |> ggplot(aes(y=index_score, x=income_score, color = continent))+geo
 ```
 
 ```{r}
+model_africa <- lm(index_score ~ income_score, data = african)
+mdoel_americas <- lm(index_score ~ income_score, data = american)
+model_asia <- lm(index_score ~ income_score, data = asian)
+model_europe <- lm(index_score ~ income_score, data = european)
+model_oceania <- lm(index_score ~ income_score, data = oceanian)
+
+summary(model_africa)
+summary(mdoel_americas)
+summary(model_asia)
+summary(model_europe)
+summary(model_oceania)
+```
+
+```{r}
 #proportion variable
 
 proportions <- full_merged %>%
