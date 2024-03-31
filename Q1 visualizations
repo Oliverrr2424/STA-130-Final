@@ -113,5 +113,5 @@ set.seed(130)
 frac <- 0.8
 
 full_merged_train <- full_merged %>% sample_frac(frac)
-full_merged_test <- full_merged %>% anti_join(full_merged_train, by = "id")
+full_merged_test <- full_merged %>% anti_join(full_merged_train, by = "incoem_group")
 ```
