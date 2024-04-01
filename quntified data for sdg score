@@ -4,33 +4,28 @@ map_trend_to_score <- function(trend) {
     trend == "Score stagnating or increasing at less than 50% of required rate" ~ 55,
     trend == "Score moderately improving, insufficient to attain goal" ~ 70,
     trend == "On track or maintaining SDG achievement" ~ 85,
-    TRUE ~ NA_real_ # Assign NA for any unexpected value to handle later
+    TRUE ~ NA_real_
   )
 }
 
-# Define the function to map Dash descriptions to scores
 map_dash_to_score <- function(dash) {
   case_when(
     dash == "Major challenges" ~ 60,
     dash == "Significant challenges" ~ 70,
     dash == "Challenges remain" ~ 80,
     dash == "SDG achieved" ~ 90,
-    TRUE ~ NA_real_ # Assign NA for "Information unavailable" or any unexpected values
+    TRUE ~ NA_real_
   )
 }
 
-# Apply the mapping functions to all Trend and Dash columns in the dataframe
 goal_file_scored <- goal_file %>%
   mutate(across(contains("Trend"), map_trend_to_score),
          across(contains("Dash"), map_dash_to_score))
 
-# Calculate the mean score for each Trend and Dash column, excluding NA values
 mean_scores <- goal_file_scored %>%
   summarise(across(contains(c("Trend", "Dash")), ~mean(., na.rm = TRUE), .names = "mean_{.col}"))
 
-# Replace missing values with the mean score for each Trend and Dash column
 goal_file_final <- goal_file_scored %>%
   mutate(across(contains(c("Trend", "Dash")), ~ifelse(is.na(.), mean_scores[[paste0("mean_", cur_column())]], .)))
 
-# Display the structure of the final dataframe to confirm the changes
 glimpse(goal_file_final)
