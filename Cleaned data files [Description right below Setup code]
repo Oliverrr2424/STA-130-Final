@@ -28,7 +28,9 @@ library(readr)
 country_codes <- read_csv("country_codes.csv")
 country_indicators <- read_csv("country_indicators.csv")
 goal_file <- read_csv("sdr_fd5e4b5a.csv")
+```
 
+```{r}
 #clean the rows in which country_name is NA
 country_codes <- country_codes |> filter(!is.na('Country or Area_en (M49)'))
 
@@ -47,13 +49,67 @@ country_codes <- country_codes |> select(`ISO3 (geonames)`,
 
 country_indicators <- country_indicators |> select(iso3, wbi_income_group) |> rename(country_code_iso3 = iso3, income_group = wbi_income_group)
 
+filtered_goal_file <- goal_file %>% 
+  select(matches("^Goal \\d+ (Trend|Dash)$"))
 
+# View the structure of the filtered dataframe
+glimpse(filtered_goal_file)
+```
+
+```{r}
+map_trend_to_score <- function(trend) {
+  case_when(
+    trend == "Decreasing" ~ 40,
+    trend == "Score stagnating or increasing at less than 50% of required rate" ~ 55,
+    trend == "Score moderately improving, insufficient to attain goal" ~ 70,
+    trend == "On track or maintaining SDG achievement" ~ 85,
+    TRUE ~ NA_real_ # Assign NA for any unexpected value to handle later
+  )
+}
+
+# Define the function to map Dash descriptions to scores
+map_dash_to_score <- function(dash) {
+  case_when(
+    dash == "Major challenges" ~ 60,
+    dash == "Significant challenges" ~ 70,
+    dash == "Challenges remain" ~ 80,
+    dash == "SDG achieved" ~ 90,
+    TRUE ~ NA_real_ # Assign NA for "Information unavailable" or any unexpected values
+  )
+}
+
+# Apply the mapping functions to all Trend and Dash columns in the dataframe
+goal_file_scored <- goal_file %>%
+  mutate(across(contains("Trend"), map_trend_to_score),
+         across(contains("Dash"), map_dash_to_score))
+
+# Calculate the mean score for each Trend and Dash column, excluding NA values
+mean_scores <- goal_file_scored %>%
+  summarise(across(contains(c("Trend", "Dash")), ~mean(., na.rm = TRUE), .names = "mean_{.col}"))
+
+# Replace missing values with the mean score for each Trend and Dash column
+goal_file_final <- goal_file_scored %>%
+  mutate(across(contains(c("Trend", "Dash")), ~ifelse(is.na(.), mean_scores[[paste0("mean_", cur_column())]], .)))
+
+# Take the average of the goal trends
+goal_file_final <- goal_file_final |>
+  mutate('velocity' = (`Goal 1 Trend` + `Goal 2 Trend` + `Goal 3 Trend` + `Goal 4 Trend` + `Goal 5 Trend` + `Goal 6 Trend` + `Goal 7 Trend` + `Goal 8 Trend` + `Goal 9 Trend` + `Goal 10 Trend` + `Goal 11 Trend` + `Goal 12 Trend` + `Goal 13 Trend` + `Goal 14 Trend` + `Goal 15 Trend` + `Goal 16 Trend` + `Goal 17 Trend`)/17
+  
+)
+
+# Display the structure of the final dataframe to confirm the changes
+glimpse(goal_file_final)
+```
+
+
+```{r}
 # Filter the goal file here [what do we need (scores and stuff)]
-goal_file <- goal_file |>
+goal_file_final <- goal_file_final |>
   select(`2023 SDG Index Score`,
          `2023 SDG Index Rank`,
          `Percentage missing values`,
-         'Country Code ISO3') |>
+         'Country Code ISO3',
+         'velocity') |>
   rename("country_code_iso3" = "Country Code ISO3",
          index_score = '2023 SDG Index Score',
          index_rank = '2023 SDG Index Rank')
@@ -61,7 +117,10 @@ goal_file <- goal_file |>
 # Merging code here: filter goal files before this line
 
 full_merged <- merge(country_indicators,country_codes,by="country_code_iso3")
-full_merged <- merge(full_merged, goal_file, by="country_code_iso3")
+full_merged <- merge(full_merged, goal_file_final, by="country_code_iso3")
+
+# Filtering NA values
+full_merged <- full_merged |> filter(!is.na(income_group) & !is.na(index_score))
 
 # assigning scores to the income levels $income_score
 ## low_income: 0
@@ -98,6 +157,4 @@ low_income <- full_merged |> filter(income_group == "Low income")
 lower_mid <- full_merged |> filter(income_group == "Lower middle income")
 upper_mid <- full_merged |> filter(income_group == "Upper middle income")
 high_income <- full_merged |> filter(income_group == "High income")
-NA_income <- full_merged |> filter(is.na(income_group))
-
 ```
