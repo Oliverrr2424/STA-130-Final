@@ -1,0 +1,77 @@
+# Setup code shit
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+library(readr)
+
+country_codes <- read_csv("country_codes.csv")
+country_indicators <- read_csv("country_indicators.csv")
+goal_file <- read_csv("sdr_fd5e4b5a.csv")
+
+country_codes <- country_codes |> select('...1', 'Region Code (M49)', 'Region Name_en (M49)', 'Sub-region Name_en (M49)', 'Intermediate Region Name_en (M49)', 'Country or Area_en (M49)', 'Least Developed Countries (LDC) (M49)', 'Land Locked Developing Countries (LLDC) (M49)', 'Small Island Developing States (SIDS) (M49)', `Developed / Developing Countries (M49)`)
+
+glimpse(country_codes)
+glimpse(goal_file)
+```
+```{r}
+country_indicators <- 
+  read_csv("country_indicators.csv") %>%
+  select(-...1) %>%  # remove first column
+  select(iso3, everything()) %>%  # reorder the columns to put iso3 as column 1
+  rename(country_code_iso3 = iso3)  # rename first column to country_code_iso3
+
+# preview data
+country_indicators
+```
+```{r}
+filtered_goal_file <- goal_file %>% 
+  select(matches("^Goal \\d+ (Trend|Dash)$"))
+
+# View the structure of the filtered dataframe
+glimpse(filtered_goal_file)
+```
+```{r}
+
+```
+```{r}
+map_trend_to_score <- function(trend) {
+  case_when(
+    trend == "Decreasing" ~ 40,
+    trend == "Score stagnating or increasing at less than 50% of required rate" ~ 55,
+    trend == "Score moderately improving, insufficient to attain goal" ~ 70,
+    trend == "On track or maintaining SDG achievement" ~ 85,
+    TRUE ~ NA_real_ # Assign NA for any unexpected value to handle later
+  )
+}
+
+# Define the function to map Dash descriptions to scores
+map_dash_to_score <- function(dash) {
+  case_when(
+    dash == "Major challenges" ~ 60,
+    dash == "Significant challenges" ~ 70,
+    dash == "Challenges remain" ~ 80,
+    dash == "SDG achieved" ~ 90,
+    TRUE ~ NA_real_ # Assign NA for "Information unavailable" or any unexpected values
+  )
+}
+
+# Apply the mapping functions to all Trend and Dash columns in the dataframe
+goal_file_scored <- goal_file %>%
+  mutate(across(contains("Trend"), map_trend_to_score),
+         across(contains("Dash"), map_dash_to_score))
+
+# Calculate the mean score for each Trend and Dash column, excluding NA values
+mean_scores <- goal_file_scored %>%
+  summarise(across(contains(c("Trend", "Dash")), ~mean(., na.rm = TRUE), .names = "mean_{.col}"))
+
+# Replace missing values with the mean score for each Trend and Dash column
+goal_file_final <- goal_file_scored %>%
+  mutate(across(contains(c("Trend", "Dash")), ~ifelse(is.na(.), mean_scores[[paste0("mean_", cur_column())]], .)))
+
+# Display the structure of the final dataframe to confirm the changes
+glimpse(goal_file_final)
+```
+
