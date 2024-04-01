@@ -1,23 +1,47 @@
 ```{r}
 
+#proportion variable for Q2
+
+bar_proportions <- full_merged %>%
+  group_by(continent, income_group) %>% 
+  summarise(n=n())
+
+bar_proportions <- tibble(bar_proportions %>%
+  mutate(continent_count = 
+             case_when(
+               continent == 'Africa' ~ 43,
+               continent == 'Americas' ~ 27,
+               continent == 'Asia' ~ 42,
+               continent == 'Europe' ~ 39,
+               continent == 'Oceania' ~ 4
+             )) %>%
+  summarise(n=n, income_group = income_group, 'proportion/continent' = n/continent_count, 'proportion/world total' = n/195))
+
+head(bar_proportions)
+```
+
+
+```{r}
+## Q2 histograms
+
 full_merged$income_group <- factor(full_merged$income_group, levels=c("Low income", "Lower middle income", "Upper middle income", "High income"))
 
 sdg_income_means <- tibble(
   income_group = c("Low income", "Lower middle income", "Upper middle income", "High income"),
-  sdg_mean = c(
-    mean(low_income$index_score),
-    mean(lower_mid$index_score),
-    mean(upper_mid$index_score),
-    mean(high_income$index_score)
+  velocity_mean = c(
+    mean(low_income$velocity),
+    mean(lower_mid$velocity),
+    mean(upper_mid$velocity),
+    mean(high_income$velocity)
   )
 )
   
 
-ggplot(data = full_merged, aes(y=index_score, x=income_group, fill=income_group))+geom_boxplot() +
+ggplot(data = full_merged, aes(y=velocity, x=income_group, fill=income_group))+geom_boxplot() +
  geom_line(data = sdg_income_means,
-            aes(x = as.factor(income_group), y = sdg_mean, group = 1), size = 1) +
-  labs(title= 'Income group and Index score averages', y= "Index Score", x = "Income group")
+            aes(x = as.factor(income_group), y = velocity_mean, group = 1), size = 1) +
+  labs(title= 'Income group and velocity averages', y= "Index Score", x = "Velocity")
 
-full_merged |> ggplot(aes(y=index_score, x=continent, fill=continent))+geom_boxplot() + labs(title= 'Continent and index score averages', y= "Index Score", x = " Continent")
+full_merged |> ggplot(aes(y=velocity, x=continent, fill=continent))+geom_boxplot() + labs(title= 'Continent and velocity averages', y= "Velocity", x = " Continent")
 
 ```
