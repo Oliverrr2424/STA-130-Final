@@ -118,7 +118,10 @@ ggplot(data = bar_proportions, aes(x= income_group, fill = continent,  y= n)) +
 
 head(bar_proportions)
 ```
-
+```{r}
+## Scatter plot for continent as a point
+continent_averages |> ggplot(aes(y=average_index_score, x=average_income_score, color = continent)) + geom_point() + labs(title= 'Average index and income scores for continents', y = "Average Index Score", x = "Average Income Score") + scale_x_continuous(limits = c(0, 1)) + scale_y_continuous(limits = c(35, 90))
+```
 
 ```{r}
 #data splitting
