@@ -124,7 +124,8 @@ continent_averages |> ggplot(aes(y=average_index_score, x=average_income_score, 
 ```
 
 ```{r}
-#data splitting
+## We gotta split them individually through continents?
+#data splitting 
 set.seed(130)
 
 frac <- 0.8
