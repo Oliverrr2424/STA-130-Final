@@ -18,14 +18,14 @@ plot(as.party(tree_model_1),gp=gpar(cex=0.9),type="simple")
 tree_model_2 <- rpart(continent ~ income_group + index_score, (data = full_merged))
 plot(as.party(tree_model_2),gp=gpar(cex=0.6),type="simple", method="class")
 ```
+
 ```{r}
-## We gotta split them individually through continents?
-#data splitting 
+# data splitting 
 
 frac <- 0.8
 
 full_merged_train <- full_merged %>% sample_frac(frac)
-full_merged_test <- full_merged %>% anti_join(full_merged_train, by = "income_group")
+full_merged_test <- full_merged %>% anti_join(full_merged_train)
 ```
 
 ```{r}
