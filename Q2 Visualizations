@@ -48,7 +48,7 @@ full_merged |> ggplot(aes(y=velocity, x=continent, fill=continent))+geom_boxplot
 
 ```{r}
 ## Q2 scatterplots
-continent_averages |> ggplot(aes(x= average_income_score, y=average_velocity, color=continent)) + geom_point() + labs(title= 'Velocity and income (Continent averages)', y= "Velocity", x = "Income score") + scale_x_continuous(limits = c(0, 1))
+continent_averages |> ggplot(aes(x= average_income_score, y=average_velocity, color=continent)) + geom_point() + labs(title= 'Velocity and income (Continent averages)', y= "Velocity", x = "Income score") + scale_x_continuous(limits = c(0, 1)) + scale_y_continuous(limits = c(55, 70))
 
 full_merged |> ggplot(aes(x= income_score, y=velocity, color=continent)) + geom_point() + labs(title= 'Velocity and income (Individual countries)', y= "Velocity", x = "Income score")
 ```
