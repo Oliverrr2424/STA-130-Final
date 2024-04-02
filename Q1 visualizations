@@ -21,7 +21,6 @@ plot(as.party(tree_model_2),gp=gpar(cex=0.6),type="simple", method="class")
 ```{r}
 ## We gotta split them individually through continents?
 #data splitting 
-set.seed(130)
 
 frac <- 0.8
 
