@@ -22,3 +22,11 @@ mean_rate_per_continent <- full_merged %>%
 mean_rate_per_continent
 
 ```
+
+```{r}
+#barplot
+mean_rate_per_continent %>% 
+  ggplot( aes(x = continent, y = mean_rate, fill = continent)) +
+  geom_bar(stat = "identity", color = "black" ) +
+  labs(x = "Continent", y = "Mean Time to Goal (Years)", title = "Estimated Mean Time to SDG Goal by Continent")
+```
