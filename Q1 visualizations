@@ -30,7 +30,7 @@ for (i in 1:n_trials){average <- mean(sample(full_merged$index_score, n_sample ,
 fhat_sdg_simulations[i] <- average}
 
 
-hist(fhat_sdg_simulations, main = "Simulated mean of SDG Index score of 3 countries distribution") + scale_x_continuous(limits = c(0,100))
+hist(fhat_sdg_simulations, main = "Simulated mean of SDG Index score of 3 countries distribution", 30) + scale_x_continuous(limits = c(0,100))
 
 ## Calculating p values for each of the continents
 # getting our test statistics and normal distribution median
