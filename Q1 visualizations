@@ -7,6 +7,91 @@ library(partykit)
 ```
 
 **Q1 methods**
+
+**Q1 Methods**
+For our hypothesis test, we will simulate a sampling distribution of the average SDG score when taking a random sample of 3 countries. Then we will take a random sample of 3 countries from a continent and see if the average is deviant from the sampling distribution. We will conduct this test for each continent separately (so let's say we're testing for Africa, we'll pick 3 countries from Africa (without replacement) and take its mean sdg score as the average, then that average will be our test statistic which we will use to compare with the simulation).
+
+Alpha level = 0.05 or 5%
+H0: mean SDG score of 3 random countries from a continent = mean SDG score of 3 random countries of world
+H1: mean SDG score of 3 random countries from a continent != mean SDG score of 3 random countries of world
+```{r}
+set.seed(21374)
+## Plotting the distribution of the SDG scores of countries
+## ggplot(data=full_merged, aes(x=index_score)) + geom_histogram(fill="red",color="black") + labs(title= "Real SDG Index score distribution", x="SDG Index score") + scale_x_continuous(limits = c(35,100))
+
+
+## Creating the sampling distribution of selecting 3 countries and calculating their mean
+n_trials = 1000 # number of samples in the distribution
+n_sample = 3 # number of countries chosen in random sample
+
+# simulating
+fhat_sdg_simulations <- rep(NA, n_trials)
+for (i in 1:n_trials){average <- mean(sample(full_merged$index_score, n_sample ,replace=FALSE))
+fhat_sdg_simulations[i] <- average}
+
+
+hist(fhat_sdg_simulations, main = "Simulated mean of SDG Index score of 3 countries distribution") + scale_x_continuous(limits = c(0,100))
+
+## Calculating p values for each of the continents
+# getting our test statistics and normal distribution median
+f0_sim <- median(fhat_sdg_simulations)
+ts_asia <- mean(sample(asian$index_score, n_sample,replace=FALSE))
+ts_africa <- mean(sample(african$index_score, n_sample,replace=FALSE))
+ts_america <- mean(sample(american$index_score, n_sample,replace=FALSE))
+ts_europe <- mean(sample(european$index_score, n_sample,replace=FALSE))
+ts_oceania <- mean(sample(oceanian$index_score, n_sample,replace=FALSE))
+
+# getting our p values for each continent
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_asia - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_asia <- typicals/n_trials
+
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_africa - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_africa <- typicals/n_trials
+
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_america - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_america <- typicals/n_trials
+
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_europe - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_europe <- typicals/n_trials
+
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_oceania - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_oceania <- typicals/n_trials
+
+print("The p value of our test for africa is")
+print(p_value_africa)
+print("The p value of our test for america is")
+print(p_value_america)
+print("The p value of our test for asia is")
+print(p_value_asia)
+print("The p value of our test for europe is")
+print(p_value_europe)
+print("The p value of our test for oceania is")
+print(p_value_oceania)
+
+```
+So from this, we conclude that the average SDG score from Europe, if we select 3 random countries, is going to be considerably deviant/more extreme compared to if we took the average countries from the world (counting countries with valid income and SDG scores in the dataset).
+
+If we had set our alpha level to be higher (10% for example), we'd also conclude that Africa would have a considerably deviant/more extreme mean SDG score compared to the world's mean SDG score from sampling 3 random countries from each.
+
+From our test statistic, we can also infer that Europe will have a higher than the world average SDG score as well as their average SDG score is higher. 
+
+If we had to guess, this is probably due to Europe having an abnormally large portion of high income countries compared to other continents, which is correlated to higher SDG scores, which we illustrate in the scatterplot and bar charts.
+
 ```{r}
 #classification tree
 
