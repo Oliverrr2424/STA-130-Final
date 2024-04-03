@@ -1,11 +1,15 @@
 ```{r}
+
 full_merged <- full_merged %>% 
-  rename(rate_of_progress_percentage = `Percentage missing values`)
+  rename(rate_of_progress_percentage = `Percentage missing values`) %>% 
+  filter(!is.na(index_score))
 ```
 
 
 ```{r}
 full_merged <- full_merged %>% 
-  mutate(rate_of_progress = rate_of_progress_percentage / 100)
+  mutate(rate_of_progress = rate_of_progress_percentage / 100) %>% 
+  mutate(progress_remaining = 100 - index_score) %>% 
+  mutate(time_to_goal = progress_remaining / rate_of_progress)
 
 ```
