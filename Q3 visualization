@@ -1,1 +1,11 @@
+```{r}
+full_merged <- full_merged %>% 
+  rename(rate_of_progress_percentage = `Percentage missing values`)
+```
 
+
+```{r}
+full_merged <- full_merged %>% 
+  mutate(rate_of_progress = rate_of_progress_percentage / 100)
+
+```
