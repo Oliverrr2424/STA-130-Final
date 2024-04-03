@@ -11,6 +11,9 @@ library(partykit)
 **Q1 Methods**
 For our hypothesis test, we will simulate a sampling distribution of the average SDG score when taking a random sample of 3 countries. Then we will take a random sample of 3 countries from a continent and see if the average is deviant from the sampling distribution. We will conduct this test for each continent separately (so let's say we're testing for Africa, we'll pick 3 countries from Africa (without replacement) and take its mean sdg score as the average, then that average will be our test statistic which we will use to compare with the simulation).
 
+The reason we picked 3 countries is because Oceania only has 4 valid countries in the data set, it also requires less computing power to pick less countries. It also reduces the chance of sampling an outlier SDG score giving us a faulty representative for the continents.
+
+
 Alpha level = 0.05 or 5%
 H0: mean SDG score of 3 random countries from a continent = mean SDG score of 3 random countries of world
 H1: mean SDG score of 3 random countries from a continent != mean SDG score of 3 random countries of world
