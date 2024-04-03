@@ -13,3 +13,12 @@ full_merged <- full_merged %>%
   mutate(time_to_goal = progress_remaining / rate_of_progress)
 
 ```
+
+```{r}
+mean_rate_per_continent <- full_merged %>% 
+  group_by(continent) %>% 
+  summarise(mean_value = mean(time_to_goal))
+
+mean_rate_per_continent
+
+```
