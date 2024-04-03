@@ -26,7 +26,15 @@ mean_rate_per_continent
 ```{r}
 #barplot
 mean_rate_per_continent %>% 
-  ggplot( aes(x = continent, y = mean_rate, fill = continent)) +
+  ggplot(aes(x = continent, y = mean_rate, fill = continent)) +
   geom_bar(stat = "identity", color = "black" ) +
   labs(x = "Continent", y = "Mean Time to Goal (Years)", title = "Estimated Mean Time to SDG Goal by Continent")
+```
+
+```{r}
+#boxplot
+full_merged %>% ggplot( aes(x = time_to_goal)) +
+  geom_boxplot() +
+  labs(x = "Time to Goal (Years)", y = "Count", title = "Distribution of Estimated Time to SDG Goal") + 
+  facet_wrap(~continent)
 ```
