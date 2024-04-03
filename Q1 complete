@@ -1,0 +1,236 @@
+**Q1 Methods**
+For our hypothesis test, we will simulate a sampling distribution of the average SDG score when taking a random sample of 3 countries. Then we will take a random sample of 3 countries from a continent and see if the average is deviant from the sampling distribution. We will conduct this test for each continent separately (so let's say we're testing for Africa, we'll pick 3 countries from Africa (without replacement) and take its mean sdg score as the average, then that average will be our test statistic which we will use to compare with the simulation).
+
+The reason we picked 3 countries is because Oceania only has 4 valid countries in the data set, it also requires less computing power to pick less countries. It also reduces the chance of sampling an outlier SDG score giving us a faulty representative for the continents.
+
+Alpha level = 0.05 or 5%
+H0: mean SDG score of 3 random countries from a continent = mean SDG score of 3 random countries of world
+H1: mean SDG score of 3 random countries from a continent != mean SDG score of 3 random countries of world
+```{r}
+set.seed(21374)
+## Plotting the distribution of the SDG scores of countries
+## ggplot(data=full_merged, aes(x=index_score)) + geom_histogram(fill="red",color="black") + labs(title= "Real SDG Index score distribution", x="SDG Index score") + scale_x_continuous(limits = c(35,100))
+
+
+## Creating the sampling distribution of selecting 3 countries and calculating their mean
+n_trials = 1000 # number of samples in the distribution
+n_sample = 3 # number of countries chosen in random sample
+
+# simulating
+fhat_sdg_simulations <- rep(NA, n_trials)
+for (i in 1:n_trials){average <- mean(sample(full_merged$index_score, n_sample ,replace=FALSE))
+fhat_sdg_simulations[i] <- average}
+
+
+hist(fhat_sdg_simulations, main = "Simulated mean of SDG Index score of 3 random countries distribution", 30) + scale_x_continuous(limits = c(0,100))
+
+## Calculating p values for each of the continents
+# getting our test statistics and normal distribution median
+f0_sim <- median(fhat_sdg_simulations)
+ts_asia <- mean(sample(asian$index_score, n_sample,replace=FALSE))
+ts_africa <- mean(sample(african$index_score, n_sample,replace=FALSE))
+ts_america <- mean(sample(american$index_score, n_sample,replace=FALSE))
+ts_europe <- mean(sample(european$index_score, n_sample,replace=FALSE))
+ts_oceania <- mean(sample(oceanian$index_score, n_sample,replace=FALSE))
+
+# getting our p values for each continent
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_asia - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_asia <- typicals/n_trials
+
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_africa - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_africa <- typicals/n_trials
+
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_america - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_america <- typicals/n_trials
+
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_europe - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_europe <- typicals/n_trials
+
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_oceania - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_oceania <- typicals/n_trials
+
+print("The p value of our test for africa is")
+print(p_value_africa)
+print("The p value of our test for america is")
+print(p_value_america)
+print("The p value of our test for asia is")
+print(p_value_asia)
+print("The p value of our test for europe is")
+print(p_value_europe)
+print("The p value of our test for oceania is")
+print(p_value_oceania)
+
+```
+So from this, we conclude that the average SDG score from Europe, if we select 3 random countries, is going to be considerably deviant/more extreme compared to if we took the average countries from the world (counting countries with valid income and SDG scores in the dataset).
+
+If we had set our alpha level to be higher (10% for example), we'd also conclude that Africa would have a considerably deviant/more extreme mean SDG score compared to the world's mean SDG score from sampling 3 random countries from each.
+
+From our test statistic, we can also infer that Europe will have a higher than the world average SDG score as well as their average SDG score is higher. 
+
+If we had to guess, this is probably due to Europe having an abnormally large portion of high income countries compared to other continents, which is correlated to higher SDG scores, which we illustrate in the scatterplot and bar charts.
+
+
+For our second method, we'll build a classification tree to illustrate how we distinguish the differences between continents and their income group and index score. We won't be splitting our data into training or testing groups to combat overfitting as we won't be using this tree to predict where "new" countries would be placed given their SDG score and Income group as new countries popping up is not very likely to happen. We want our model to be as fit as possible for this specific (full_merged) data as it is the only one we are working with.
+
+We'll also build simpler trees using income group and index scores to give a further analysis between the relationships between SDG scores, income groups and continents.
+```{r}
+#classification tree
+tree_model_2 <- rpart(continent ~ income_group + index_score, (data = full_merged))
+plot(as.party(tree_model_2),gp=gpar(cex=0.6),type="simple", method="class")
+
+summary(tree_model_2)$'Variable importance'
+```
+We can see that our model is a little bit complicated, but the important thing to note is that the error rate is about 28% (calculated), the variable importance is 64% for index_score and 36% for  income_group (from summary).
+
+What this means is that our model can guess the right continent of a country given the index score and income group about 72% of the time. Since guessing a country's continent randomly correctly should be 1/5 (20%), this implies that SDG score and income groups are correlated to/associated with being from certain continents.
+
+The variable importance implies that the SDG score is more strongly correlated with countries being from a certain continent compared to income groups, although this is most likely due to income groups being classified into very few (only 4) discrete categories while SDG scores are continuous and higher ranging.
+
+Our tree also does not have a node for Oceania, so that means the model will always guess wrong for a Oceanic country. This is because Oceanic countries are underrepresented in the data set, only having 4 entries whereas the other continents have at least 25.
+
+```{r}
+# Code for the simpler trees
+tree_model_1 <- rpart(continent ~ index_score, (data = full_merged))
+plot(as.party(tree_model_1),gp=gpar(cex=0.9),type="simple")
+
+tree_model_3 <- rpart(continent ~ income_group, (data = full_merged))
+plot(as.party(tree_model_3),gp=gpar(cex=0.6),type="simple", method="class")
+```
+[Note: These analysis are based on our lm tree model]
+Now from our simpler SDG tree, we can see that: 
+Europe is associated with "high" SDG index scores above or equal to 75.25.
+Asia is associated with "middle" SDG index scores between 62.8-75.24.
+Africa is associated with "lower" SDG index scores below 62.8.
+
+For the income tree, we can see that: 
+Europe is associated with High income countries.
+The Americas are associated with Upper middle income countries.
+Africa is associated with Lower middle and low income countries.
+
+From our original more complicated model, here is the full association analysis/prediction strategy (which will be accurate 78% of the time given the data set).
+
+Guess:
+Europe if:
+- SDG index score is above/equal to 75.25
+
+Africa if: 
+- SDG index score is below 62.8
+- Income group is upper middle and SDG index score is below 68.1 
+
+Asia if:
+- Income group is either high or lower middle and SDG index score is between 62.8 and 75.25 
+- Income group is upper middle and SDG index score is above 70.85 and below 73.55
+
+Americas if:
+- Income group is upper middle and SDG index score is above/equal to 68.1 and below 70.85 
+- Income group is upper middle and SDG index score is above/equal to 73.55 and below 75.25
+
+Note: There are no high income countries with SDG scores below 63
+      There are no low income countries with SDG scores above 60.2
+      Hence no nodes correspond to these specific cases.
+
+**Q1 visualizations**
+```{r}
+# Pie chart of the world
+full_merged %>% 
+  group_by(income_group) %>%
+  summarise(n=n()) %>%
+  ggplot(aes(x="", y=n, fill=income_group)) +
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) +
+  theme_void()
+
+# Bar charts of the proportions
+full_merged_bars <- full_merged
+full_merged_bars$income_group <- factor(full_merged$income_group, levels=c('High income', 'Upper middle income', 'Lower middle income', 'Low income'))
+
+
+
+bar_proportions <- full_merged %>%
+  group_by(continent, income_group) %>% 
+  summarise(n=n())
+
+bar_proportions <- tibble(bar_proportions %>%
+  mutate(continent_count = 
+             case_when(
+               continent == 'Africa' ~ 43,
+               continent == 'Americas' ~ 27,
+               continent == 'Asia' ~ 42,
+               continent == 'Europe' ~ 39,
+               continent == 'Oceania' ~ 4
+             ), 
+         income_count = 
+           case_when(
+             income_group == 'Low income' ~ 22,
+             income_group == 'Lower middle income' ~ 41,
+             income_group == 'Upper middle income' ~ 43,
+             income_group == 'High income' ~ 49,
+           )) %>%
+  summarise(n=n, income_group = income_group, 'proportion/continent' = n/continent_count, 'proportion/world total' = n/155, continent_count = continent_count, planet = 'world', income_count = income_count))
+
+bar_proportions$income_group <- factor(bar_proportions$income_group, levels=c('High income', 'Upper middle income', 'Lower middle income', 'Low income'))
+
+ggplot(data = bar_proportions,aes(x= planet, fill = income_group, y=n/155)) +
+ geom_bar(position = 'stack', stat='identity') +
+  labs(x = 'World', title = 'World proportion', y = 'Percent of total') + scale_y_continuous(labels = scales::percent)
+
+  
+ggplot(data = bar_proportions, aes(x= continent, fill = income_group,  y= n/continent_count)) +
+  geom_bar(position = 'stack', stat='identity') +
+  labs(x = 'Continents', y= 'Percentage of continent', title = "Continents proportions of income levels") + scale_y_continuous(labels = scales::percent)
+
+ggplot(data = bar_proportions, aes(x= continent, fill = income_group,  y= n)) +
+  geom_bar(position = 'stack', stat='identity') +
+  labs(x = 'Continents', y= 'Count', title = "Income levels distribution across continents")
+
+ggplot(data = bar_proportions, aes(x= income_group, fill = continent,  y= n/income_count)) +
+  geom_bar(position = 'stack', stat='identity') +
+  labs(x = 'Continents', y= 'Percentage of income level', title = "Income levels distribution across continents") + scale_y_continuous(labels = scales::percent)
+
+ggplot(data = bar_proportions, aes(x= income_group, fill = continent,  y= n)) +
+  geom_bar(position = 'stack', stat='identity') +
+  labs(x = 'Continents', y= 'Count', title = "Income levels counts across continents") 
+
+
+head(bar_proportions)
+```
+From these plots, we can see that Europe has a high amount of high income countries (nearly 75%) and no low income countries while Africa has nearly the opposite, a high proportion of low income countries and no high income countries.
+
+While the other three continents have relatively more even spreads of income levels.
+```{r}
+full_merged |> ggplot(aes(y=index_score, x=income_score))+geom_point()+ facet_wrap(~continent) +geom_smooth(method ="lm", se=FALSE) + labs(title= 'Divided into continents', y= "Index Score", x = "Income Score")
+
+full_merged |> ggplot(aes(y=index_score, x=income_score, color = continent))+ geom_point() +geom_smooth(method ="lm", se=FALSE) + labs(title= 'SDG score compared to Income levels', y = "SDG index score", x = "Income score")
+
+lm_tree1 <- lm(income_score ~ index_score, data = full_merged)
+summary(lm_tree1)$r.squared
+```
+From this, we can see that for all continents, a higher income score/income level is correlated with a higher SDG index score. A single best fit line for the entire data set (comparing income score with index score) would have an R^2 value of 0.653 which implies some correlation between the two variables.
+```{r}
+## Scatter plot for continent as a point
+continent_averages |> ggplot(aes(y=average_index_score, x=average_income_score, color = continent)) + geom_point() + labs(title= 'Average index and income scores for continents', y = "Average Index Score", x = "Average Income Score") + scale_x_continuous(limits = c(0, 1)) + scale_y_continuous(limits = c(35, 90))
+
+
+```
+This graph shows where the continents would place if we took their averages.
+We can still see a positive correlation between income score and index score.
+
+In summary, income score seems to have a positive correlation with SDG score.
+Europe has a high proportion of higher income countries and high SDG index scores on average (high 70s).
+America, Asia and Oceania are more varied but average out to be about upper middle income and middle index score (high 60s,low 70s).
+Africa has a high proportion of low and lower middle income countries and low SDG index scores on average (high 50s).
