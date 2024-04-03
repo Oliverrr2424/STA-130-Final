@@ -1,10 +1,10 @@
+**adding new variables and filtering data** 
 ```{r}
 
 full_merged <- full_merged %>% 
   rename(rate_of_progress_percentage = `Percentage missing values`) %>% 
   filter(!is.na(index_score))
 ```
-
 
 ```{r}
 full_merged <- full_merged %>% 
@@ -23,6 +23,7 @@ mean_rate_per_continent
 
 ```
 
+** the visualizations ** 
 ```{r}
 #barplot
 mean_rate_per_continent %>% 
