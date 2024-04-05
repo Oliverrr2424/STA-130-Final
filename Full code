@@ -1,0 +1,539 @@
+# Setup code
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+set.seed(21374)
+# lucky please
+```
+
+All right summary of the data set objects:
+**full_merged** is the total world data with income levels, developing state and SDG scores for their respective countries
+
+**african**, **american**, **asian**, **european** and **oceanian** divides the countries into their respective continents as listed on the *country_codes.csv* file
+
+**high_income**, **upper_mid**, **lower_mid**, **low_income** and **NA_income** divides the countries into their respective income levels as listed on the *sdr_fd5e4b5a.csv* or *goal_file* 
+[Note: NA income means that the income level of that country is not listed]
+
+*Stuff still needed*
+1: NA values found in SDG index scores
+2: NA values found in income levels
+3: Understand what Percentage missing values mean
+
+*What to do next:*
+1: Decide how to filter the NA values
+
+```{r}
+library(readr)
+
+country_codes <- read_csv("country_codes.csv")
+country_indicators <- read_csv("country_indicators.csv")
+goal_file <- read_csv("sdr_fd5e4b5a.csv")
+```
+**Data cleaning and merging**
+```{r}
+#clean the rows in which country_name is NA
+country_codes <- country_codes |> filter(!is.na('Country or Area_en (M49)'))
+
+# taking only rows we need and renaming them
+
+country_codes <- country_codes |> select(`ISO3 (geonames)`,
+                                         'Region Name_en (M49)',
+                                         'Sub-region Name_en (M49)',
+                                         'Country or Area_en (M49)',
+                                         `Developed / Developing Countries (M49)`) |>
+  rename(country_code_iso3 = "ISO3 (geonames)",
+        country_names = 'Country or Area_en (M49)',
+        continent = 'Region Name_en (M49)',
+        subcontinent = "Sub-region Name_en (M49)",
+        development_state = 'Developed / Developing Countries (M49)')
+
+country_indicators <- country_indicators |> select(iso3, wbi_income_group) |> rename(country_code_iso3 = iso3, income_group = wbi_income_group)
+
+filtered_goal_file <- goal_file %>% 
+  select(matches("^Goal \\d+ (Trend|Dash)$"))
+
+# View the structure of the filtered dataframe
+glimpse(filtered_goal_file)
+```
+
+```{r}
+map_trend_to_score <- function(trend) {
+  case_when(
+    trend == "Decreasing" ~ 40,
+    trend == "Score stagnating or increasing at less than 50% of required rate" ~ 55,
+    trend == "Score moderately improving, insufficient to attain goal" ~ 70,
+    trend == "On track or maintaining SDG achievement" ~ 85,
+    TRUE ~ NA_real_ # Assign NA for any unexpected value to handle later
+  )
+}
+
+# Define the function to map Dash descriptions to scores
+map_dash_to_score <- function(dash) {
+  case_when(
+    dash == "Major challenges" ~ 60,
+    dash == "Significant challenges" ~ 70,
+    dash == "Challenges remain" ~ 80,
+    dash == "SDG achieved" ~ 90,
+    TRUE ~ NA_real_ # Assign NA for "Information unavailable" or any unexpected values
+  )
+}
+
+# Apply the mapping functions to all Trend and Dash columns in the dataframe
+goal_file_scored <- goal_file %>%
+  mutate(across(contains("Trend"), map_trend_to_score),
+         across(contains("Dash"), map_dash_to_score))
+
+# Calculate the mean score for each Trend and Dash column, excluding NA values
+mean_scores <- goal_file_scored %>%
+  summarise(across(contains(c("Trend", "Dash")), ~mean(., na.rm = TRUE), .names = "mean_{.col}"))
+
+# Replace missing values with the mean score for each Trend and Dash column
+goal_file_final <- goal_file_scored %>%
+  mutate(across(contains(c("Trend", "Dash")), ~ifelse(is.na(.), mean_scores[[paste0("mean_", cur_column())]], .)))
+
+# Take the average of the goal trends
+goal_file_final <- goal_file_final |>
+  mutate('velocity' = (`Goal 1 Trend` + `Goal 2 Trend` + `Goal 3 Trend` + `Goal 4 Trend` + `Goal 5 Trend` + `Goal 6 Trend` + `Goal 7 Trend` + `Goal 8 Trend` + `Goal 9 Trend` + `Goal 10 Trend` + `Goal 11 Trend` + `Goal 12 Trend` + `Goal 13 Trend` + `Goal 14 Trend` + `Goal 15 Trend` + `Goal 16 Trend` + `Goal 17 Trend`)/17
+  
+)
+
+# Display the structure of the final dataframe to confirm the changes
+glimpse(goal_file_final)
+```
+
+
+```{r}
+# Filter the goal file here [what do we need (scores and stuff)]
+goal_file_final2 <- goal_file_final |>
+  select(`2023 SDG Index Score`,
+         `2023 SDG Index Rank`,
+         `Percentage missing values`,
+         'Country Code ISO3',
+         'velocity') |>
+  rename("country_code_iso3" = "Country Code ISO3",
+         index_score = '2023 SDG Index Score',
+         index_rank = '2023 SDG Index Rank')
+
+# Merging code here: filter goal files before this line
+
+full_merged <- merge(country_indicators,country_codes,by="country_code_iso3")
+full_merged <- merge(full_merged, goal_file_final2, by="country_code_iso3")
+
+# Filtering NA values
+full_merged <- full_merged |> filter(!is.na(income_group) & !is.na(index_score))
+
+# reordering columns
+full_merged <- full_merged[, c(1,5,3,2,7,8,9,10,4,6)]
+
+# assigning scores to the income levels $income_score
+## low_income: 0
+## lower_mid : 1/3
+## upper_mid : 2/3
+## high : 1
+
+
+full_merged <- full_merged |> mutate(income_score = case_when(
+                income_group == "Low income" ~ 0,
+                income_group == "Lower middle income" ~ 1/3,
+                income_group == "Upper middle income" ~ 2/3,
+                income_group == "High income" ~ 1,
+))
+
+
+# adding back world variable (I'm getting confused in the plots)
+full_merged <- full_merged |> mutate(world = "world")
+glimpse(full_merged)
+
+## full_merged is the merged file for all 3 files
+## the goals (SDG scores) still need to be filtered (do it before the merging code)
+
+## dividing into continents:
+african <- full_merged |> filter(continent == 'Africa')
+asian <- full_merged |> filter(continent == 'Asia')
+american <- full_merged |> filter(continent == 'Americas')
+oceanian <- full_merged |> filter(continent == 'Oceania')
+european <- full_merged |> filter(continent == 'Europe')
+
+## dividing into income groups
+low_income <- full_merged |> filter(income_group == "Low income")
+lower_mid <- full_merged |> filter(income_group == "Lower middle income")
+upper_mid <- full_merged |> filter(income_group == "Upper middle income")
+high_income <- full_merged |> filter(income_group == "High income")
+
+## making continents average table
+continent_averages <- full_merged %>%
+  group_by(continent) %>%
+  summarise(
+    average_income_score = mean(income_score, na.rm = TRUE),
+    average_index_score = mean(index_score, na.rm = TRUE),
+    average_velocity = mean(velocity, na.rm = TRUE)
+  )
+
+print(continent_averages)
+```
+
+
+
+
+
+
+
+
+
+```{r}
+#packages
+library(rpart)
+library(partykit)
+```
+
+**Q1 Methods**
+For our hypothesis test, we will simulate a sampling distribution of the average SDG score when taking a random sample of 3 countries. Then we will take a random sample of 3 countries from a continent and see if the average is deviant from the sampling distribution. We will conduct this test for each continent separately (so let's say we're testing for Africa, we'll pick 3 countries from Africa (without replacement) and take its mean sdg score as the average, then that average will be our test statistic which we will use to compare with the simulation).
+
+The reason we picked 3 countries is because Oceania only has 4 valid countries in the data set, it also requires less computing power to pick less countries. It also reduces the chance of sampling an outlier SDG score giving us a faulty representative for the continents.
+
+Alpha level = 0.05 or 5%
+H0: mean SDG score of 3 random countries from a continent = mean SDG score of 3 random countries of world
+H1: mean SDG score of 3 random countries from a continent != mean SDG score of 3 random countries of world
+```{r}
+set.seed(21374)
+## Plotting the distribution of the SDG scores of countries
+## ggplot(data=full_merged, aes(x=index_score)) + geom_histogram(fill="red",color="black") + labs(title= "Real SDG Index score distribution", x="SDG Index score") + scale_x_continuous(limits = c(35,100))
+
+
+## Creating the sampling distribution of selecting 3 countries and calculating their mean
+n_trials = 1000 # number of samples in the distribution
+n_sample = 3 # number of countries chosen in random sample
+
+# simulating
+fhat_sdg_simulations <- rep(NA, n_trials)
+for (i in 1:n_trials){average <- mean(sample(full_merged$index_score, n_sample ,replace=FALSE))
+fhat_sdg_simulations[i] <- average}
+
+
+hist(fhat_sdg_simulations, main = "Simulated mean of SDG Index score of 3 random countries distribution", 30) + scale_x_continuous(limits = c(0,100))
+
+## Calculating p values for each of the continents
+# getting our test statistics and normal distribution median
+f0_sim <- median(fhat_sdg_simulations)
+ts_asia <- mean(sample(asian$index_score, n_sample,replace=FALSE))
+ts_africa <- mean(sample(african$index_score, n_sample,replace=FALSE))
+ts_america <- mean(sample(american$index_score, n_sample,replace=FALSE))
+ts_europe <- mean(sample(european$index_score, n_sample,replace=FALSE))
+ts_oceania <- mean(sample(oceanian$index_score, n_sample,replace=FALSE))
+
+# getting our p values for each continent
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_asia - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_asia <- typicals/n_trials
+
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_africa - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_africa <- typicals/n_trials
+
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_america - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_america <- typicals/n_trials
+
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_europe - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_europe <- typicals/n_trials
+
+typicals <- 0
+for (i in 1:n_trials){
+  if (abs(ts_oceania - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
+}
+p_value_oceania <- typicals/n_trials
+
+print("The p value of our test for africa is")
+print(p_value_africa)
+print("The p value of our test for america is")
+print(p_value_america)
+print("The p value of our test for asia is")
+print(p_value_asia)
+print("The p value of our test for europe is")
+print(p_value_europe)
+print("The p value of our test for oceania is")
+print(p_value_oceania)
+
+```
+So from this, we conclude that the average SDG score from Europe, if we select 3 random countries, is going to be considerably deviant/more extreme compared to if we took the average countries from the world (counting countries with valid income and SDG scores in the dataset).
+
+If we had set our alpha level to be higher (10% for example), we'd also conclude that Africa would have a considerably deviant/more extreme mean SDG score compared to the world's mean SDG score from sampling 3 random countries from each.
+
+From our test statistic, we can also infer that Europe will have a higher than the world average SDG score as well as their average SDG score is higher. 
+
+If we had to guess, this is probably due to Europe having an abnormally large portion of high income countries compared to other continents, which is correlated to higher SDG scores, which we illustrate in the scatterplot and bar charts.
+
+
+For our second method, we'll build a classification tree to illustrate how we distinguish the differences between continents and their income group and index score. We won't be splitting our data into training or testing groups to combat overfitting as we won't be using this tree to predict where "new" countries would be placed given their SDG score and Income group as new countries popping up is not very likely to happen. We want our model to be as fit as possible for this specific (full_merged) data as it is the only one we are working with.
+
+We'll also build simpler trees using income group and index scores to give a further analysis between the relationships between SDG scores, income groups and continents.
+```{r}
+#classification tree
+tree_model_2 <- rpart(continent ~ income_group + index_score, (data = full_merged))
+plot(as.party(tree_model_2),gp=gpar(cex=0.6),type="simple", method="class")
+
+summary(tree_model_2)$'Variable importance'
+```
+We can see that our model is a little bit complicated, but the important thing to note is that the error rate is about 28% (calculated), the variable importance is 64% for index_score and 36% for  income_group (from summary).
+
+What this means is that our model can guess the right continent of a country given the index score and income group about 72% of the time. Since guessing a country's continent randomly correctly should be 1/5 (20%), this implies that SDG score and income groups are correlated to/associated with being from certain continents.
+
+The variable importance implies that the SDG score is more strongly correlated with countries being from a certain continent compared to income groups, although this is most likely due to income groups being classified into very few (only 4) discrete categories while SDG scores are continuous and higher ranging.
+
+Our tree also does not have a node for Oceania, so that means the model will always guess wrong for a Oceanic country. This is because Oceanic countries are underrepresented in the data set, only having 4 entries whereas the other continents have at least 25.
+
+```{r}
+# Code for the simpler trees
+tree_model_1 <- rpart(continent ~ index_score, (data = full_merged))
+plot(as.party(tree_model_1),gp=gpar(cex=0.9),type="simple")
+
+tree_model_3 <- rpart(continent ~ income_group, (data = full_merged))
+plot(as.party(tree_model_3),gp=gpar(cex=0.6),type="simple", method="class")
+```
+[Note: These analysis are based on our lm tree model]
+Now from our simpler SDG tree, we can see that: 
+Europe is associated with "high" SDG index scores above or equal to 75.25.
+Asia is associated with "middle" SDG index scores between 62.8-75.24.
+Africa is associated with "lower" SDG index scores below 62.8.
+
+For the income tree, we can see that: 
+Europe is associated with High income countries.
+The Americas are associated with Upper middle income countries.
+Africa is associated with Lower middle and low income countries.
+
+From our original more complicated model, here is the full association analysis/prediction strategy (which will be accurate 78% of the time given the data set).
+
+Guess:
+Europe if:
+- SDG index score is above/equal to 75.25
+
+Africa if: 
+- SDG index score is below 62.8
+- Income group is upper middle and SDG index score is below 68.1 
+
+Asia if:
+- Income group is either high or lower middle and SDG index score is between 62.8 and 75.25 
+- Income group is upper middle and SDG index score is above 70.85 and below 73.55
+
+Americas if:
+- Income group is upper middle and SDG index score is above/equal to 68.1 and below 70.85 
+- Income group is upper middle and SDG index score is above/equal to 73.55 and below 75.25
+
+Note: There are no high income countries with SDG scores below 63
+      There are no low income countries with SDG scores above 60.2
+      Hence no nodes correspond to these specific cases.
+
+**Q1 visualizations**
+```{r}
+# Pie chart of the world
+full_merged %>% 
+  group_by(income_group) %>%
+  summarise(n=n()) %>%
+  ggplot(aes(x="", y=n, fill=income_group)) +
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) +
+  theme_void()
+
+# Bar charts of the proportions
+full_merged_bars <- full_merged
+full_merged_bars$income_group <- factor(full_merged$income_group, levels=c('High income', 'Upper middle income', 'Lower middle income', 'Low income'))
+
+
+
+bar_proportions <- full_merged %>%
+  group_by(continent, income_group) %>% 
+  summarise(n=n())
+
+bar_proportions <- tibble(bar_proportions %>%
+  mutate(continent_count = 
+             case_when(
+               continent == 'Africa' ~ 43,
+               continent == 'Americas' ~ 27,
+               continent == 'Asia' ~ 42,
+               continent == 'Europe' ~ 39,
+               continent == 'Oceania' ~ 4
+             ), 
+         income_count = 
+           case_when(
+             income_group == 'Low income' ~ 22,
+             income_group == 'Lower middle income' ~ 41,
+             income_group == 'Upper middle income' ~ 43,
+             income_group == 'High income' ~ 49,
+           )) %>%
+  summarise(n=n, income_group = income_group, 'proportion/continent' = n/continent_count, 'proportion/world total' = n/155, continent_count = continent_count, planet = 'world', income_count = income_count))
+
+bar_proportions$income_group <- factor(bar_proportions$income_group, levels=c('High income', 'Upper middle income', 'Lower middle income', 'Low income'))
+
+ggplot(data = bar_proportions,aes(x= planet, fill = income_group, y=n/155)) +
+ geom_bar(position = 'stack', stat='identity') +
+  labs(x = 'World', title = 'World proportion', y = 'Percent of total') + scale_y_continuous(labels = scales::percent)
+
+  
+ggplot(data = bar_proportions, aes(x= continent, fill = income_group,  y= n/continent_count)) +
+  geom_bar(position = 'stack', stat='identity') +
+  labs(x = 'Continents', y= 'Percentage of continent', title = "Continents proportions of income levels") + scale_y_continuous(labels = scales::percent)
+
+ggplot(data = bar_proportions, aes(x= continent, fill = income_group,  y= n)) +
+  geom_bar(position = 'stack', stat='identity') +
+  labs(x = 'Continents', y= 'Count', title = "Income levels distribution across continents")
+
+ggplot(data = bar_proportions, aes(x= income_group, fill = continent,  y= n/income_count)) +
+  geom_bar(position = 'stack', stat='identity') +
+  labs(x = 'Continents', y= 'Percentage of income level', title = "Income levels distribution across continents") + scale_y_continuous(labels = scales::percent)
+
+ggplot(data = bar_proportions, aes(x= income_group, fill = continent,  y= n)) +
+  geom_bar(position = 'stack', stat='identity') +
+  labs(x = 'Continents', y= 'Count', title = "Income levels counts across continents") 
+
+
+head(bar_proportions)
+```
+From these plots, we can see that Europe has a high amount of high income countries (nearly 75%) and no low income countries while Africa has nearly the opposite, a high proportion of low income countries and no high income countries.
+
+While the other three continents have relatively more even spreads of income levels.
+```{r}
+full_merged |> ggplot(aes(y=index_score, x=income_score))+geom_point()+ facet_wrap(~continent) +geom_smooth(method ="lm", se=FALSE) + labs(title= 'Divided into continents', y= "Index Score", x = "Income Score")
+
+full_merged |> ggplot(aes(y=index_score, x=income_score, color = continent))+ geom_point() +geom_smooth(method ="lm", se=FALSE) + labs(title= 'SDG score compared to Income levels', y = "SDG index score", x = "Income score")
+
+lm_tree1 <- lm(income_score ~ index_score, data = full_merged)
+summary(lm_tree1)$r.squared
+```
+From this, we can see that for all continents, a higher income score/income level is correlated with a higher SDG index score. A single best fit line for the entire data set (comparing income score with index score) would have an R^2 value of 0.653 which implies some correlation between the two variables.
+```{r}
+## Scatter plot for continent as a point
+continent_averages |> ggplot(aes(y=average_index_score, x=average_income_score, color = continent)) + geom_point() + labs(title= 'Average index and income scores for continents', y = "Average Index Score", x = "Average Income Score") + scale_x_continuous(limits = c(0, 1)) + scale_y_continuous(limits = c(35, 90))
+
+
+```
+This graph shows where the continents would place if we took their averages.
+We can still see a positive correlation between income score and index score.
+
+In summary, income score seems to have a positive correlation with SDG score.
+Europe has a high proportion of higher income countries and high SDG index scores on average (high 70s).
+America, Asia and Oceania are more varied but average out to be about upper middle income and middle index score (high 60s,low 70s).
+Africa has a high proportion of low and lower middle income countries and low SDG index scores on average (high 50s).
+
+**Question 2**
+
+
+```{r}
+# Q2 splitting for classification tree training
+## We gotta split them individually through continents?
+ 
+set.seed(130)
+
+frac <- 0.8
+
+full_merged_train <- full_merged %>% sample_frac(frac)
+full_merged_test <- full_merged %>% anti_join(full_merged_train, by = "income_group")
+```
+
+
+```{r}
+
+#proportion variable for Q2
+
+bar_proportions <- full_merged %>%
+  group_by(continent, income_group) %>% 
+  summarise(n=n())
+
+bar_proportions <- tibble(bar_proportions %>%
+  mutate(continent_count = 
+             case_when(
+               continent == 'Africa' ~ 43,
+               continent == 'Americas' ~ 27,
+               continent == 'Asia' ~ 42,
+               continent == 'Europe' ~ 39,
+               continent == 'Oceania' ~ 4
+             )) %>%
+  summarise(n=n, income_group = income_group, 'proportion/continent' = n/continent_count, 'proportion/world total' = n/195))
+
+head(bar_proportions)
+```
+
+
+```{r}
+## Q2 histograms
+
+full_merged$income_group <- factor(full_merged$income_group, levels=c("Low income", "Lower middle income", "Upper middle income", "High income"))
+
+sdg_income_means <- tibble(
+  income_group = c("Low income", "Lower middle income", "Upper middle income", "High income"),
+  velocity_mean = c(
+    mean(low_income$velocity),
+    mean(lower_mid$velocity),
+    mean(upper_mid$velocity),
+    mean(high_income$velocity)
+  )
+)
+  
+
+ggplot(data = full_merged, aes(y=velocity, x=income_group, fill=income_group))+geom_boxplot() +
+ geom_line(data = sdg_income_means,
+            aes(x = as.factor(income_group), y = velocity_mean, group = 1), size = 1) +
+  labs(title= 'Income group and velocity averages', y= "Index Score", x = "Velocity")
+
+full_merged |> ggplot(aes(y=velocity, x=continent, fill=continent))+geom_boxplot() + labs(title= 'Continent and velocity averages', y= "Velocity", x = " Continent")
+
+```
+
+```{r}
+## Q2 scatterplots
+continent_averages |> ggplot(aes(x= average_income_score, y=average_velocity, color=continent)) + geom_point() + labs(title= 'Velocity and income (Continent averages)', y= "Velocity", x = "Income score") + scale_x_continuous(limits = c(0, 1)) + scale_y_continuous(limits = c(55, 70))
+
+full_merged |> ggplot(aes(x= income_score, y=velocity, color=continent)) + geom_point() + labs(title= 'Velocity and income (Individual countries)', y= "Velocity", x = "Income score")
+```
+
+**Q3 Methods** 
+
+```{r}
+full_merged <- full_merged %>% 
+  mutate(rate_of_progress = velocity / 100) %>% 
+  mutate(progress_remaining = 100 - index_score) %>% 
+  mutate(time_to_goal = progress_remaining / rate_of_progress)
+```
+
+We create a variable of estimated time to goal. With the assumptions that velocity/100 represents the rate of progress of a country on their SDG index score in a year, and that the rate of progress will remain constant. Time to goal represents the estimated time of completion of a country's SDG in years based on our previous assumptions.
+
+Below is the table of the averages of the continent.
+```{r}
+mean_rate_per_continent <- full_merged %>% 
+  group_by(continent) %>% 
+  summarise(mean_estimated_time = mean(time_to_goal))
+
+mean_rate_per_continent
+
+```
+
+**Q3 visualizations** 
+```{r}
+#barplot
+mean_rate_per_continent %>% 
+  ggplot(aes(x = continent, y = mean_estimated_time, fill = continent)) +
+  geom_bar(stat = "identity", color = "black" ) +
+  labs(x = "Continent", y = "Estimated Mean Time to Goal (Years)", title = "Estimated Mean Time to SDG Goal by Continent")
+```
+We can see that on average, Europe has the lowest estimated time to completion of their SDGs.
+The Americas, Asia and Oceania has about the same amount of estimated time to completion of their SDGs.
+Africa has the highest estimated time to completion of their SDGs.
+
+```{r}
+#boxplot
+full_merged %>% ggplot( aes(x = time_to_goal)) +
+  geom_boxplot() +
+  labs(x = "Time to Goal (Years)", y = "Count", title = "Distribution of Estimated Time to SDG Goal") + 
+  facet_wrap(~continent)
+```
+
+We can see that the distributions of time to goals for Europe and Oceania is relatively close to the medians.
+Meanwhile for Africa, Americas and Asia, their distribution spread is more varied from the median.
