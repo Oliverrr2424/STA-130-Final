@@ -1,17 +1,10 @@
-**adding new variables and filtering data** 
-```{r}
-
-full_merged <- full_merged %>% 
-  rename(rate_of_progress_percentage = `Percentage missing values`) %>% 
-  filter(!is.na(index_score))
-```
+**Q3 Methods** 
 
 ```{r}
 full_merged <- full_merged %>% 
-  mutate(rate_of_progress = rate_of_progress_percentage / 100) %>% 
+  mutate(rate_of_progress = velocity / 100) %>% 
   mutate(progress_remaining = 100 - index_score) %>% 
   mutate(time_to_goal = progress_remaining / rate_of_progress)
-
 ```
 
 ```{r}
