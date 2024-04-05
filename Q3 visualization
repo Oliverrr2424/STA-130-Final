@@ -1,3 +1,4 @@
+
 **Q3 Methods** 
 
 ```{r}
@@ -7,23 +8,29 @@ full_merged <- full_merged %>%
   mutate(time_to_goal = progress_remaining / rate_of_progress)
 ```
 
+We create a variable of estimated time to goal. With the assumptions that velocity/100 represents the rate of progress of a country on their SDG index score in a year, and that the rate of progress will remain constant. Time to goal represents the estimated time of completion of a country's SDG in years based on our previous assumptions.
+
+Below is the table of the averages of the continent.
 ```{r}
 mean_rate_per_continent <- full_merged %>% 
   group_by(continent) %>% 
-  summarise(mean_value = mean(time_to_goal))
+  summarise(mean_estimated_time = mean(time_to_goal))
 
 mean_rate_per_continent
 
 ```
 
-** the visualizations ** 
+**Q3 visualizations** 
 ```{r}
 #barplot
 mean_rate_per_continent %>% 
-  ggplot(aes(x = continent, y = mean_rate, fill = continent)) +
+  ggplot(aes(x = continent, y = mean_estimated_time, fill = continent)) +
   geom_bar(stat = "identity", color = "black" ) +
-  labs(x = "Continent", y = "Mean Time to Goal (Years)", title = "Estimated Mean Time to SDG Goal by Continent")
+  labs(x = "Continent", y = "Estimated Mean Time to Goal (Years)", title = "Estimated Mean Time to SDG Goal by Continent")
 ```
+We can see that on average, Europe has the lowest estimated time to completion of their SDGs.
+The Americas, Asia and Oceania has about the same amount of estimated time to completion of their SDGs.
+Africa has the highest estimated time to completion of their SDGs.
 
 ```{r}
 #boxplot
@@ -32,3 +39,6 @@ full_merged %>% ggplot( aes(x = time_to_goal)) +
   labs(x = "Time to Goal (Years)", y = "Count", title = "Distribution of Estimated Time to SDG Goal") + 
   facet_wrap(~continent)
 ```
+
+We can see that the distributions of time to goals for Europe and Oceania is relatively close to the medians.
+Meanwhile for Africa, Americas and Asia, their distribution spread is more varied from the median.
