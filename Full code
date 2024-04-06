@@ -437,14 +437,15 @@ bar_proportions <- tibble(bar_proportions %>%
                continent == 'Europe' ~ 39,
                continent == 'Oceania' ~ 4
              )) %>%
-  summarise(n=n, income_group = income_group, 'proportion/continent' = n/continent_count, 'proportion/world total' = n/195))
+     group_by(continent, income_group) %>%
+    summarise(n=n, income_group = income_group, 'proportion/continent' = n/continent_count, 'proportion/world total' = n/195))
 
-head(bar_proportions)
+bar_proportions
 ```
-
+Above, we created a table that shows the number of countries in different classifications of continents and income group.
 
 ```{r}
-## Q2 histograms
+## Q2 boxplots
 
 full_merged$income_group <- factor(full_merged$income_group, levels=c("Low income", "Lower middle income", "Upper middle income", "High income"))
 
@@ -462,19 +463,23 @@ sdg_income_means <- tibble(
 ggplot(data = full_merged, aes(y=velocity, x=income_group, fill=income_group))+geom_boxplot() +
  geom_line(data = sdg_income_means,
             aes(x = as.factor(income_group), y = velocity_mean, group = 1), size = 1) +
-  labs(title= 'Income group and velocity averages', y= "Index Score", x = "Velocity")
+  labs(title= 'Income group and velocity averages', y= "Velocity", x = "Income Group")
 
 full_merged |> ggplot(aes(y=velocity, x=continent, fill=continent))+geom_boxplot() + labs(title= 'Continent and velocity averages', y= "Velocity", x = " Continent")
 
 ```
+From the graphs, we can see that there is a positive correlation between higher income and SDG "velocity". The higher the income of a country, the higher the SDG score generally.
+
+We can see that on average, Europe has the highest velocity, followed by Asia, The Americas, and Oceania and Africa with about the same level of velocity.
+
 
 ```{r}
 ## Q2 scatterplots
-continent_averages |> ggplot(aes(x= average_income_score, y=average_velocity, color=continent)) + geom_point() + labs(title= 'Velocity and income (Continent averages)', y= "Velocity", x = "Income score") + scale_x_continuous(limits = c(0, 1)) + scale_y_continuous(limits = c(55, 70))
-
 full_merged |> ggplot(aes(x= income_score, y=velocity, color=continent)) + geom_point() + labs(title= 'Velocity and income (Individual countries)', y= "Velocity", x = "Income score")
-```
 
+continent_averages |> ggplot(aes(x= average_income_score, y=average_velocity, color=continent)) + geom_point() + labs(title= 'Velocity and income (Continent averages)', y= "Velocity", x = "Income score") + scale_x_continuous(limits = c(0, 1)) + scale_y_continuous(limits = c(55, 70))
+```
+In the graph above, we compare the Income scores of countries with the velocity. Again, the higher the income score, the higher the velocity. We can see where continents would place on our second graph if we took their average income score and velocity for each country in the continent.
 **Q3 Methods** 
 
 ```{r}
