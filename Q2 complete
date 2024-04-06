@@ -1,0 +1,339 @@
+# Setup code
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+set.seed(21374)
+# lucky please
+```
+
+All right summary of the data set objects:
+**full_merged** is the total world data with income levels, developing state and SDG scores for their respective countries
+
+**african**, **american**, **asian**, **european** and **oceanian** divides the countries into their respective continents as listed on the *country_codes.csv* file
+
+**high_income**, **upper_mid**, **lower_mid**, **low_income** and **NA_income** divides the countries into their respective income levels as listed on the *sdr_fd5e4b5a.csv* or *goal_file* 
+[Note: NA income means that the income level of that country is not listed]
+
+*Stuff still needed*
+1: NA values found in SDG index scores
+2: NA values found in income levels
+3: Understand what Percentage missing values mean
+
+*What to do next:*
+1: Decide how to filter the NA values
+
+```{r}
+library(readr)
+
+country_codes <- read_csv("country_codes.csv")
+country_indicators <- read_csv("country_indicators.csv")
+goal_file <- read_csv("sdr_fd5e4b5a.csv")
+```
+
+```{r}
+#clean the rows in which country_name is NA
+country_codes <- country_codes |> filter(!is.na('Country or Area_en (M49)'))
+
+# taking only rows we need and renaming them
+
+country_codes <- country_codes |> select(`ISO3 (geonames)`,
+                                         'Region Name_en (M49)',
+                                         'Sub-region Name_en (M49)',
+                                         'Country or Area_en (M49)',
+                                         `Developed / Developing Countries (M49)`) |>
+  rename(country_code_iso3 = "ISO3 (geonames)",
+        country_names = 'Country or Area_en (M49)',
+        continent = 'Region Name_en (M49)',
+        subcontinent = "Sub-region Name_en (M49)",
+        development_state = 'Developed / Developing Countries (M49)')
+
+country_indicators <- country_indicators |> select(iso3, wbi_income_group) |> rename(country_code_iso3 = iso3, income_group = wbi_income_group)
+
+filtered_goal_file <- goal_file %>% 
+  select(matches("^Goal \\d+ (Trend|Dash)$"))
+
+# View the structure of the filtered dataframe
+glimpse(filtered_goal_file)
+```
+
+```{r}
+map_trend_to_score <- function(trend) {
+  case_when(
+    trend == "Decreasing" ~ 40,
+    trend == "Score stagnating or increasing at less than 50% of required rate" ~ 55,
+    trend == "Score moderately improving, insufficient to attain goal" ~ 70,
+    trend == "On track or maintaining SDG achievement" ~ 85,
+    TRUE ~ NA_real_ # Assign NA for any unexpected value to handle later
+  )
+}
+
+# Define the function to map Dash descriptions to scores
+map_dash_to_score <- function(dash) {
+  case_when(
+    dash == "Major challenges" ~ 60,
+    dash == "Significant challenges" ~ 70,
+    dash == "Challenges remain" ~ 80,
+    dash == "SDG achieved" ~ 90,
+    TRUE ~ NA_real_ # Assign NA for "Information unavailable" or any unexpected values
+  )
+}
+
+# Apply the mapping functions to all Trend and Dash columns in the dataframe
+goal_file_scored <- goal_file %>%
+  mutate(across(contains("Trend"), map_trend_to_score),
+         across(contains("Dash"), map_dash_to_score))
+
+# Calculate the mean score for each Trend and Dash column, excluding NA values
+mean_scores <- goal_file_scored %>%
+  summarise(across(contains(c("Trend", "Dash")), ~mean(., na.rm = TRUE), .names = "mean_{.col}"))
+
+# Replace missing values with the mean score for each Trend and Dash column
+goal_file_final <- goal_file_scored %>%
+  mutate(across(contains(c("Trend", "Dash")), ~ifelse(is.na(.), mean_scores[[paste0("mean_", cur_column())]], .)))
+
+# Take the average of the goal trends
+goal_file_final <- goal_file_final |>
+  mutate('velocity' = (`Goal 1 Trend` + `Goal 2 Trend` + `Goal 3 Trend` + `Goal 4 Trend` + `Goal 5 Trend` + `Goal 6 Trend` + `Goal 7 Trend` + `Goal 8 Trend` + `Goal 9 Trend` + `Goal 10 Trend` + `Goal 11 Trend` + `Goal 12 Trend` + `Goal 13 Trend` + `Goal 14 Trend` + `Goal 15 Trend` + `Goal 16 Trend` + `Goal 17 Trend`)/17
+  
+)
+
+# Display the structure of the final dataframe to confirm the changes
+glimpse(goal_file_final)
+```
+
+
+```{r}
+# Filter the goal file here [what do we need (scores and stuff)]
+goal_file_final2 <- goal_file_final |>
+  select(`2023 SDG Index Score`,
+         `2023 SDG Index Rank`,
+         `Percentage missing values`,
+         'Country Code ISO3',
+         'velocity') |>
+  rename("country_code_iso3" = "Country Code ISO3",
+         index_score = '2023 SDG Index Score',
+         index_rank = '2023 SDG Index Rank')
+
+# Merging code here: filter goal files before this line
+
+full_merged <- merge(country_indicators,country_codes,by="country_code_iso3")
+full_merged <- merge(full_merged, goal_file_final2, by="country_code_iso3")
+
+# Filtering NA values
+full_merged <- full_merged |> filter(!is.na(income_group) & !is.na(index_score))
+
+# reordering columns
+full_merged <- full_merged[, c(1,5,3,2,7,8,9,10,4,6)]
+
+# assigning scores to the income levels $income_score
+## low_income: 0
+## lower_mid : 1/3
+## upper_mid : 2/3
+## high : 1
+
+
+full_merged <- full_merged |> mutate(income_score = case_when(
+                income_group == "Low income" ~ 0,
+                income_group == "Lower middle income" ~ 1/3,
+                income_group == "Upper middle income" ~ 2/3,
+                income_group == "High income" ~ 1,
+))
+
+
+# adding back world variable (I'm getting confused in the plots)
+full_merged <- full_merged |> mutate(world = "world")
+glimpse(full_merged)
+
+## full_merged is the merged file for all 3 files
+## the goals (SDG scores) still need to be filtered (do it before the merging code)
+
+## dividing into continents:
+african <- full_merged |> filter(continent == 'Africa')
+asian <- full_merged |> filter(continent == 'Asia')
+american <- full_merged |> filter(continent == 'Americas')
+oceanian <- full_merged |> filter(continent == 'Oceania')
+european <- full_merged |> filter(continent == 'Europe')
+
+## dividing into income groups
+low_income <- full_merged |> filter(income_group == "Low income")
+lower_mid <- full_merged |> filter(income_group == "Lower middle income")
+upper_mid <- full_merged |> filter(income_group == "Upper middle income")
+high_income <- full_merged |> filter(income_group == "High income")
+
+## making continents average table
+```
+```{r}
+full_merged
+```
+
+
+```{r}
+continent_averages <- full_merged %>%
+  group_by(continent) %>%
+  summarise(
+    average_income_score = mean(income_score, na.rm = TRUE),
+    average_index_score = mean(index_score, na.rm = TRUE),
+    average_velocity = mean(velocity, na.rm = TRUE)
+  )
+
+print(continent_averages)
+```
+```{r}
+full_merged_saved <- full_merged
+full_merged_saved
+```
+
+
+```{r}
+set.seed(21374)
+
+clustering_data <- select(full_merged, velocity, income_score)
+
+# Perform k-means clustering on this subset
+wss <- map_dbl(1:10, ~kmeans(clustering_data, .x)$tot.withinss)
+plot(1:10, wss, type = 'b', pch = 19, col = 'blue', xlab = "Number of clusters", ylab = "Total within clusters sum of squares")
+
+# Determine the optimal number of clusters (assuming 4 as optimal for the demonstration)
+set.seed(21374)
+optimal_clusters <- 4
+kmeans_result <- kmeans(clustering_data, centers = optimal_clusters, nstart = 25)
+
+# Add the clustering results back to the original full_merged dataframe
+full_merged$cluster <- as.factor(kmeans_result$cluster)
+
+# Visualization with ggplot2, now using the full full_merged dataframe which includes country names and clustering results
+ggplot(full_merged, aes(x = velocity, y = income_score, color = cluster)) +
+  geom_point() +
+  scale_color_manual(values = c('red', 'green', 'blue', 'cyan')) +
+  geom_point(data = as.data.frame(kmeans_result$centers), aes(x = velocity, y = income_score),
+             color = 'black', size = 5, shape = 3) +
+  theme_minimal() +
+  labs(title = "K-Means Clustering of Countries by SDG Progress and Income Level",
+       x = "SDG Progress Rate (Velocity)", y = "Income Score") +
+  guides(color = guide_legend(title = "Cluster"))
+```
+
+```{r}
+glimpse(full_merged)
+```
+
+```{r}
+cluster_1_countries <- full_merged[full_merged$cluster == 1, "country_names"]
+
+# Printing the result
+print(cluster_1_countries)
+```
+```{r}
+full_mage <- full_merged
+countries_by_cluster <- split(full_mage[, c("country_names", "continent", "cluster")], full_mage$cluster)
+
+# To print each cluster's data frame with identification
+for (cluster in names(countries_by_cluster)) {
+  cat("Data for Cluster", cluster, ":\n")
+  print(countries_by_cluster[[cluster]][, c("country_names", "continent")])
+  cat("\n") # Adding a newline for readability
+}
+```
+```{r}
+result <- full_mage %>%
+  group_by(cluster) %>%
+  count(continent) %>%
+  arrange(desc(n)) %>%
+  slice(1) %>%
+  select(cluster, continent, n)
+
+# Print the result
+print(result)
+```
+
+```{r}
+total_countries_per_continent <- data.frame(
+  continent = c("Africa", "Americas", "Asia", "Europe", "Oceania"),
+  total_countries = c(90, 35, 49, 44, 14) 
+)
+
+full_merged <- full_merged %>%
+  left_join(total_countries_per_continent, by = "continent")
+
+proportions <- full_merged %>%
+  group_by(cluster, continent) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  mutate(proportion = count / total_countries_per_continent$total_countries) %>%
+  arrange(cluster, desc(proportion))
+
+most_represented_continent <- proportions %>%
+  group_by(cluster) %>%
+  slice_max(proportion, n = 1) %>%
+  ungroup() %>%
+  select(cluster, continent, proportion)
+
+print(most_represented_continent)
+```
+
+Analysis
+
+Based on the percentage:
+Cluster 1 (Red) - Asia: This cluster has a high concentration of Asian countries, with about 38.78% of 
+Asian countries falling into this cluster. This suggests that a significant portion of Asian countries 
+share similar SDG progress rates and income levels. The graph suggests this cluster tends to have a lower 
+SDG progress rate and a wide range of income scores.
+
+Cluster 2 (Green) - Americas: For Cluster 2, the highest proportion of countries comes from the Americas, 
+with roughly 28.57% representation. These countries share similarities in their SDG progress and income levels, 
+and looking at the graph, they are generally clustered in the mid-range for both SDG progress rate and income scores.
+
+Cluster 3 (Dark Blue) - Europe: Half of the European countries are represented in Cluster 3. This indicates 
+a strong grouping of European countries with similar SDG velocity and higher income levels, as depicted 
+by their placement on the graph.
+
+Cluster 4 (Light Blue) - Africa: A significant proportion, of African countries are in Cluster 4. 
+This number exceeds 100% due to normalization based on the total number of countries in Africa; it suggests 
+that nearly all African countries might be represented in this cluster. These countries, as shown on the graph,
+ have a lower SDG progress rate and income scores.
+
+for this one, i do not know why it exceeds.
+
+Based on the counts:
+Cluster 1: Asia and Europe are the top two continents, with 19 and 15 countries, respectively. This cluster suggests
+ a diverse group of countries from both Asia and Europe that share similar SDG progress and income levels. The relatively 
+high count for both continents indicates a mix of possibly developing and emerging economies in Asia alongside several
+ European countries that may share economic or developmental similarities with these Asian countries.
+
+Cluster 2: Africa leads this cluster with 12 countries, followed closely by Asia with 11. The closeness in the count
+ suggests a balanced representation between African and Asian nations within this cluster. Countries in this cluster
+ are likely to have moderate SDG progress rates and income levels, and the presence of both continents indicates similar
+ challenges or developmental stages despite geographic diversity.
+
+Cluster 3: Dominated by Europe with 22 countries, and followed by Asia with a significantly smaller representation of 5
+ countries, this cluster is primarily European. The high number of European countries here might indicate that these nations
+ have more in common with each other in terms of higher income levels and SDG progress rates. The presence of Asian countries
+ might represent those with comparable economic conditions and development to the European nations in this cluster.
+
+Cluster 4: This cluster is heavily weighted towards African countries, with 25 represented, and has a smaller representation
+ from Asia with 7 countries. The dominance of African countries could suggest that this cluster consists of nations with lower
+ income scores and SDG progress rates. The presence of some Asian countries implies that there are nations in Asia with 
+similar developmental patterns to a substantial portion of Africa.
+
+This detailed breakdown shows not only the predominant continents in each cluster but also a secondary influence. For instance, 
+while Europe dominates Cluster 3, there are also a few Asian countries that have similar characteristics to this mostly European
+cluster. Similarly, the Asian presence in Cluster 1 along with Europe suggests some overlap in developmental or economic profiles 
+between these regions within the cluster.
+
+It is also interesting to note the significant presence of Asia across all clusters, indicating the continent's diversity in 
+terms of development and income levels. Meanwhile, Africa's strong presence in Clusters 2 and 4 could be indicative of common 
+development challenges or stages among these countries.
+
+To answer the research question:
+
+The average "Rate of Progress" on SDGs appears to vary between continents. Asian countries are spread across all clusters, indicating 
+a varied rate of progress within the continent. Europe predominantly falls within the higher progress clusters, especially Cluster 3, 
+which suggests a generally higher average rate of progress for European countries. African countries are primarily found in clusters 
+with a lower rate of progress, indicating a lower average rate of progress for the continent of Africa.
+
+The relationship between income and the rate of progress can be partly inferred from the clustering. European countries, which generally 
+have higher income levels, are frequently found in the cluster with a higher rate of progress (Cluster 3). In contrast, African countries
+, which are often characterized by lower income levels, dominate the clusters with a lower rate of progress (Clusters 2 and 4). This 
+suggests that there is a correlation between higher income and a higher rate of progress among these countries.
+
+These observations can help policymakers and researchers to better understand the link between income levels and SDG progress rates, 
+tailoring their strategies to address the unique challenges and strengths within each continent.
