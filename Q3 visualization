@@ -19,6 +19,13 @@ mean_rate_per_continent <- full_merged %>%
 mean_rate_per_continent
 
 ```
+```{r}
+african <- full_merged |> filter(continent == 'Africa')
+asian <- full_merged |> filter(continent == 'Asia')
+american <- full_merged |> filter(continent == 'Americas')
+oceanian <- full_merged |> filter(continent == 'Oceania')
+european <- full_merged |> filter(continent == 'Europe')
+```
 
 **Q3 visualizations** 
 ```{r}
@@ -42,3 +49,66 @@ full_merged %>% ggplot( aes(x = time_to_goal)) +
 
 We can see that the distributions of time to goals for Europe and Oceania is relatively close to the medians.
 Meanwhile for Africa, Americas and Asia, their distribution spread is more varied from the median.
+
+**Bootstraps** 
+```{r}
+# boot mean african
+boot_means_african <- rep(NA, 1000)
+for(i in 1:1000){
+  boot_samp_african <- african %>%
+    sample_n(size = 25, replace = TRUE) %>%
+    summarise(mean_time = mean(time_to_goal, na.rm = TRUE))
+  boot_means_african[i] <- boot_samp$mean_time
+}
+boot_means_african <- tibble(mean_time = boot_means)
+
+```
+
+```{r}
+# boot mean asian
+boot_means_asian <- rep(NA, 1000)
+for(i in 1:1000){
+  boot_samp_asian <- asian %>%
+    sample_n(size = 25, replace = TRUE) %>%
+    summarise(mean_time = mean(time_to_goal, na.rm = TRUE))
+  boot_means_asian[i] <- boot_samp_asian$mean_time
+}
+boot_means_asian <- tibble(mean_time = boot_means_asian)
+
+```
+
+```{r}
+#boot mean american
+boot_means_american <- rep(NA, 1000)
+for(i in 1:1000){
+  boot_samp_american <- american %>%
+    sample_n(size = 25, replace = TRUE) %>%
+    summarise(mean_time = mean(time_to_goal, na.rm = TRUE))
+  boot_means_american[i] <- boot_samp_american$mean_time
+}
+boot_means_american <- tibble(mean_time = boot_means_american)
+```
+
+```{r}
+#boot mean oceanian
+boot_means_oceanian <- rep(NA, 1000)
+for(i in 1:1000){
+  boot_samp_oceanian <- oceanian %>%
+    sample_n(size = 25, replace = TRUE) %>%
+    summarise(mean_time = mean(time_to_goal, na.rm = TRUE))
+  boot_means_oceanian[i] <- boot_samp_oceanian$mean_time
+}
+boot_means_oceanian <- tibble(mean_time = boot_means_oceanian)
+```
+
+```{r}
+#boot mean european
+boot_means_european <- rep(NA, 1000)
+for(i in 1:1000){
+  boot_samp_european <- european %>%
+    sample_n(size = 25, replace = TRUE) %>%
+    summarise(mean_time = mean(time_to_goal, na.rm = TRUE))
+  boot_means_european[i] <- boot_samp_european$mean_time
+}
+boot_means_european <- tibble(mean_time = boot_means_european)
+```
