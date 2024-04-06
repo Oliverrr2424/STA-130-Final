@@ -52,3 +52,28 @@ continent_averages |> ggplot(aes(x= average_income_score, y=average_velocity, co
 
 full_merged |> ggplot(aes(x= income_score, y=velocity, color=continent)) + geom_point() + labs(title= 'Velocity and income (Individual countries)', y= "Velocity", x = "Income score")
 ```
+Clustering:
+```{r}
+set.seed(21374)
+
+clustering_data <- select(full_merged, velocity, income_score)
+
+wss <- map_dbl(1:10, ~kmeans(clustering_data, .x)$tot.withinss)
+plot(1:10, wss, type = 'b', pch = 19, col = 'blue', xlab = "Number of clusters", ylab = "Total within clusters sum of squares")
+
+set.seed(21374)
+optimal_clusters <- 4
+kmeans_result <- kmeans(clustering_data, centers = optimal_clusters, nstart = 25)
+
+full_merged$cluster <- as.factor(kmeans_result$cluster)
+
+ggplot(full_merged, aes(x = velocity, y = income_score, color = cluster)) +
+  geom_point() +
+  scale_color_manual(values = c('red', 'green', 'blue', 'cyan')) +
+  geom_point(data = as.data.frame(kmeans_result$centers), aes(x = velocity, y = income_score),
+             color = 'black', size = 5, shape = 3) +
+  theme_minimal() +
+  labs(title = "K-Means Clustering of Countries by SDG Progress and Income Level",
+       x = "SDG Progress Rate (Velocity)", y = "Income Score") +
+  guides(color = guide_legend(title = "Cluster"))
+```
