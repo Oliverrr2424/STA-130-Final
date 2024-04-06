@@ -251,19 +251,15 @@ for (i in 1:n_trials){
   if (abs(ts_oceania - f0_sim) <= abs(fhat_sdg_simulations[i] - f0_sim)) {typicals = typicals + 1}
 }
 p_value_oceania <- typicals/n_trials
-
-print("The p value of our test for africa is")
-print(p_value_africa)
-print("The p value of our test for america is")
-print(p_value_america)
-print("The p value of our test for asia is")
-print(p_value_asia)
-print("The p value of our test for europe is")
-print(p_value_europe)
-print("The p value of our test for oceania is")
-print(p_value_oceania)
-
 ```
+The P-values from our test are as follows:
+P_Value_Africa = 0.083
+P_Value_America= 0.311
+P_Value_Asia = 0.904
+P_Value_Europe = 0.035
+P_Value_Oceania = 0.986
+
+
 So from this, we conclude that the average SDG score from Europe, if we select 3 random countries, is going to be considerably deviant/more extreme compared to if we took the average countries from the world (counting countries with valid income and SDG scores in the dataset).
 
 If we had set our alpha level to be higher (10% for example), we'd also conclude that Africa would have a considerably deviant/more extreme mean SDG score compared to the world's mean SDG score from sampling 3 random countries from each.
@@ -424,21 +420,6 @@ America, Asia and Oceania are more varied but average out to be about upper midd
 Africa has a high proportion of low and lower middle income countries and low SDG index scores on average (high 50s).
 
 **Question 2**
-
-
-```{r}
-# Q2 splitting for classification tree training
-## We gotta split them individually through continents?
- 
-set.seed(130)
-
-frac <- 0.8
-
-full_merged_train <- full_merged %>% sample_frac(frac)
-full_merged_test <- full_merged %>% anti_join(full_merged_train, by = "income_group")
-```
-
-
 ```{r}
 
 #proportion variable for Q2
@@ -514,6 +495,18 @@ mean_rate_per_continent <- full_merged %>%
 mean_rate_per_continent
 
 ```
+
+```{r}
+full_merged |> ggplot(aes(x=time_to_goal, y=index_score, color=continent)) + geom_smooth(method = "lm", se=FALSE) + geom_point() + labs(x= "Estimated time to SDG completion", y = "Current SDG Index Score", title = "Current SDG Score compared to estimated time to completion") + facet_wrap(~continent)
+
+lm_lines2 <- lm(time_to_goal ~ index_score, data = full_merged)
+summary(lm_lines2)$r.squared
+```
+From the graph, we can see that the higher the current SDG score, the faster it is estimated for the SDG to be completed, as the way we defined the estimated time is based on the current SDG score and how close it is to completion. The current SDG score has a strong negative correlation with Estimated time to SDG completion with an r^2 value of 0.9875944.
+
+From the linear regression lines, we can see that the range of estimated times vary through continents. Europe has a short line that is very high up, they are expected to complete their SDGs relatively fast ranging from the 20s-42.
+
+Meanwhile, Africa, The Americas, Asia and Oceania have a larger range of estimated time to SDG completion, ranging from the 30s all the way up to more than 100 (for Africa).
 
 **Q3 visualizations** 
 ```{r}
