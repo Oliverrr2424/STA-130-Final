@@ -11,19 +11,16 @@ All right summary of the data set objects:
 
 **african**, **american**, **asian**, **european** and **oceanian** divides the countries into their respective continents as listed on the *country_codes.csv* file
 
-**high_income**, **upper_mid**, **lower_mid** and **low_income** divides the countries into their respective income levels as listed on the *sdr_fd5e4b5a.csv* or *goal_file* 
+**high_income**, **upper_mid**, **lower_mid**, **low_income** and **NA_income** divides the countries into their respective income levels as listed on the *sdr_fd5e4b5a.csv* or *goal_file* 
 [Note: NA income means that the income level of that country is not listed]
 
-Data cleaning summary:
-Selected variables we needed
-Merged the 3 data sets into one file
-Renamed variables
-Removed rows with NA values on income_group and index_score (sdg_index_score)
-Quantified income_group, mutated into a new variable income_score
-Quantified trends and dashes
-Averaged the quantified trend variables, mutated into 'velocity'
-Divided and created new data objects based on income_group and continent
-Q3: Mutated 'time_to_goal' using index_score and velocity
+*Stuff still needed*
+1: NA values found in SDG index scores
+2: NA values found in income levels
+3: Understand what Percentage missing values mean
+
+*What to do next:*
+1: Decide how to filter the NA values
 
 ```{r}
 library(readr)
@@ -689,6 +686,12 @@ full_merged <- full_merged %>%
   mutate(rate_of_progress = velocity / 100) %>% 
   mutate(progress_remaining = 100 - index_score) %>% 
   mutate(time_to_goal = progress_remaining / rate_of_progress)
+
+african <- full_merged |> filter(continent == 'Africa')
+asian <- full_merged |> filter(continent == 'Asia')
+american <- full_merged |> filter(continent == 'Americas')
+oceanian <- full_merged |> filter(continent == 'Oceania')
+european <- full_merged |> filter(continent == 'Europe')
 ```
 
 We create a variable of estimated time to goal. With the assumptions that velocity/100 represents the rate of progress of a country on their SDG index score in a year, and that the rate of progress will remain constant. Time to goal represents the estimated time of completion of a country's SDG in years based on our previous assumptions.
@@ -715,6 +718,84 @@ From the linear regression lines, we can see that the range of estimated times v
 
 Meanwhile, Africa, The Americas, Asia and Oceania have a larger range of estimated time to SDG completion, ranging from the 30s all the way up to more than 100 (for Africa).
 
+Next, we'll use bootstrapping to generate confidence intervals for estimated time left for SDG completion for each continent at a 95% confidence interval
+```{r}
+set.seed(10293)
+
+boot_means_eu <- rep(NA, 1000)
+for(i in 1:1000)
+{
+  boot_samp_eu <- european %>% sample_n(size=200, replace=TRUE)
+  boot_means_eu[i] <- as.numeric(boot_samp_eu |> summarise(mean_estimated_time = mean(time_to_goal)))
+}
+boot_means_eu <- tibble(mean_estimated_time = boot_means)
+
+quantile(boot_means_eu$mean_estimated_time, c(0.025,0.975))
+```
+From this, we can say that we are 95% confident that the mean estimated time for European countries to complete their SDGs are between 30.65-32.13 years (using our assumptions used to create the time_to_goal variable).
+
+```{r}
+set.seed(10293)
+
+boot_means_asia <- rep(NA, 1000)
+for(i in 1:1000)
+{
+  boot_samp_asia <- asian %>% sample_n(size=200, replace=TRUE)
+  boot_means_asia[i] <- as.numeric(boot_samp_asia |> summarise(mean_estimated_time = mean(time_to_goal)))
+}
+boot_means_asia <- tibble(mean_estimated_time=boot_means_asia)
+
+quantile(boot_means_asia$mean_estimated_time, c(0.025,0.975))
+```
+For Asia, it is 48.8-51.5 years
+
+
+```{r}
+set.seed(10293)
+
+boot_means_africa <- rep(NA, 1000)
+for(i in 1:1000)
+{
+  boot_samp_africa <- african %>% sample_n(size=200, replace=TRUE)
+  boot_means_africa[i] <- as.numeric(boot_samp_africa |> summarise(mean_estimated_time = mean(time_to_goal)))
+}
+boot_means_africa <- tibble(mean_estimated_time=boot_means_africa)
+
+quantile(boot_means_africa$mean_estimated_time, c(0.025,0.975))
+```
+For Africa, it is 70.95-75.14 years
+
+```{r}
+set.seed(10293)
+
+boot_means_am <- rep(NA, 1000)
+for(i in 1:1000)
+{
+  boot_samp_am <- american %>% sample_n(size=200, replace=TRUE)
+  boot_means_am[i] <- as.numeric(boot_samp_am |> summarise(mean_estimated_time = mean(time_to_goal)))
+}
+boot_means_am <- tibble(mean_estimated_time=boot_means_am)
+
+quantile(boot_means_am$mean_estimated_time, c(0.025,0.975))
+```
+For America, it is 47.4-50.3 years
+
+
+```{r}
+set.seed(10293)
+
+boot_means_oc <- rep(NA, 1000)
+for(i in 1:1000)
+{
+  boot_samp_oc <- oceanian %>% sample_n(size=200, replace=TRUE)
+  boot_means_oc[i] <- as.numeric(boot_samp_oc |> summarise(mean_estimated_time = mean(time_to_goal)))
+}
+boot_means_oc <- tibble(mean_estimated_time=boot_means_oc)
+
+quantile(boot_means_oc$mean_estimated_time, c(0.025,0.975))
+```
+For Oceania, it is 48.5-53.9 years
+
 **Q3 visualizations** 
 ```{r}
 #barplot
@@ -737,3 +818,12 @@ full_merged %>% ggplot( aes(x = time_to_goal)) +
 
 We can see that the distributions of time to goals for Europe and Oceania is relatively close to the medians.
 Meanwhile for Africa, Americas and Asia, their distribution spread is more varied from the median.
+
+**Conclusions**
+In this project, we showcased the relationships between SDG scores, income scores, rate of progress and estimated time left for SDGs, and how different continents differ in terms of those "variables". 
+
+In general, income scores, rate of progress and SDG scores are positively correlated while estimated time left is negatively correlated with rate of progress, and by proxy the other variables as well (although we did not specifically showcase this fact). 
+
+We also showcased on average, Europe has higher income, SDG scores, velocity and are expected to quickly complete their SDGs.
+While Africa has the opposite, lower incomes, SDG scores, velocity and are expected to take longer to complete their SDGs.
+While Asia, The Americas and Oceania lie somewhere in between the two with more middle income countries and SDG scores, velocities and estimated time in between the two above mentioned continents.
