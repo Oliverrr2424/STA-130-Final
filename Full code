@@ -63,7 +63,7 @@ map_trend_to_score <- function(trend) {
     trend == "Score stagnating or increasing at less than 50% of required rate" ~ 55,
     trend == "Score moderately improving, insufficient to attain goal" ~ 70,
     trend == "On track or maintaining SDG achievement" ~ 85,
-    TRUE ~ NA_real_ # Assign NA for any unexpected value to handle later
+    TRUE ~ NA_real_
   )
 }
 
@@ -74,7 +74,7 @@ map_dash_to_score <- function(dash) {
     dash == "Significant challenges" ~ 70,
     dash == "Challenges remain" ~ 80,
     dash == "SDG achieved" ~ 90,
-    TRUE ~ NA_real_ # Assign NA for "Information unavailable" or any unexpected values
+    TRUE ~ NA_real_
   )
 }
 
@@ -422,6 +422,81 @@ Africa has a high proportion of low and lower middle income countries and low SD
 **Question 2**
 
 ```{r}
+# Filter the goal file here [what do we need (scores and stuff)]
+goal_file_final2 <- goal_file_final |>
+  select(`2023 SDG Index Score`,
+         `2023 SDG Index Rank`,
+         `Percentage missing values`,
+         'Country Code ISO3',
+         'velocity') |>
+  rename("country_code_iso3" = "Country Code ISO3",
+         index_score = '2023 SDG Index Score',
+         index_rank = '2023 SDG Index Rank')
+
+# Merging code here: filter goal files before this line
+
+full_merged <- merge(country_indicators,country_codes,by="country_code_iso3")
+full_merged <- merge(full_merged, goal_file_final2, by="country_code_iso3")
+
+# Filtering NA values
+full_merged <- full_merged |> filter(!is.na(income_group) & !is.na(index_score))
+
+# reordering columns
+full_merged <- full_merged[, c(1,5,3,2,7,8,9,10,4,6)]
+
+# assigning scores to the income levels $income_score
+## low_income: 0
+## lower_mid : 1/3
+## upper_mid : 2/3
+## high : 1
+
+
+full_merged <- full_merged |> mutate(income_score = case_when(
+                income_group == "Low income" ~ 0,
+                income_group == "Lower middle income" ~ 1/3,
+                income_group == "Upper middle income" ~ 2/3,
+                income_group == "High income" ~ 1,
+))
+
+
+# adding back world variable (I'm getting confused in the plots)
+full_merged <- full_merged |> mutate(world = "world")
+glimpse(full_merged)
+
+## full_merged is the merged file for all 3 files
+## the goals (SDG scores) still need to be filtered (do it before the merging code)
+
+## dividing into continents:
+african <- full_merged |> filter(continent == 'Africa')
+asian <- full_merged |> filter(continent == 'Asia')
+american <- full_merged |> filter(continent == 'Americas')
+oceanian <- full_merged |> filter(continent == 'Oceania')
+european <- full_merged |> filter(continent == 'Europe')
+
+## dividing into income groups
+low_income <- full_merged |> filter(income_group == "Low income")
+lower_mid <- full_merged |> filter(income_group == "Lower middle income")
+upper_mid <- full_merged |> filter(income_group == "Upper middle income")
+high_income <- full_merged |> filter(income_group == "High income")
+
+## making continents average table
+```
+```{r}
+full_merged
+```
+
+
+```{r}
+continent_averages <- full_merged %>%
+  group_by(continent) %>%
+  summarise(
+    average_income_score = mean(income_score, na.rm = TRUE),
+    average_velocity = mean(velocity, na.rm = TRUE)
+  )
+
+print(continent_averages)
+```
+```{r}
 full_merged_saved <- full_merged
 full_merged_saved
 ```
@@ -432,19 +507,15 @@ set.seed(21374)
 
 clustering_data <- select(full_merged, velocity, income_score)
 
-# Perform k-means clustering on this subset
 wss <- map_dbl(1:10, ~kmeans(clustering_data, .x)$tot.withinss)
 plot(1:10, wss, type = 'b', pch = 19, col = 'blue', xlab = "Number of clusters", ylab = "Total within clusters sum of squares")
 
-# Determine the optimal number of clusters (assuming 4 as optimal for the demonstration)
 set.seed(21374)
 optimal_clusters <- 4
 kmeans_result <- kmeans(clustering_data, centers = optimal_clusters, nstart = 25)
 
-# Add the clustering results back to the original full_merged dataframe
 full_merged$cluster <- as.factor(kmeans_result$cluster)
 
-# Visualization with ggplot2, now using the full full_merged dataframe which includes country names and clustering results
 ggplot(full_merged, aes(x = velocity, y = income_score, color = cluster)) +
   geom_point() +
   scale_color_manual(values = c('red', 'green', 'blue', 'cyan')) +
@@ -481,60 +552,24 @@ for (cluster in names(countries_by_cluster)) {
 result <- full_mage %>%
   group_by(cluster) %>%
   count(continent) %>%
-  arrange(desc(n)) %>%
-  slice(1) %>%
+  arrange(cluster, desc(n)) %>%
+  slice_head(n = 4) %>%
   select(cluster, continent, n)
 
 # Print the result
 print(result)
 ```
-
 ```{r}
-total_countries_per_continent <- data.frame(
-  continent = c("Africa", "Americas", "Asia", "Europe", "Oceania"),
-  total_countries = c(90, 35, 49, 44, 14) 
-)
-
-full_merged <- full_merged %>%
-  left_join(total_countries_per_continent, by = "continent")
-
-proportions <- full_merged %>%
-  group_by(cluster, continent) %>%
-  summarise(count = n(), .groups = "drop") %>%
-  mutate(proportion = count / total_countries_per_continent$total_countries) %>%
-  arrange(cluster, desc(proportion))
-
-most_represented_continent <- proportions %>%
-  group_by(cluster) %>%
-  slice_max(proportion, n = 1) %>%
-  ungroup() %>%
-  select(cluster, continent, proportion)
-
-print(most_represented_continent)
+ggplot(result, aes(x=factor(cluster), y=n, fill=continent)) +
+  geom_bar(stat="identity", position="dodge") +
+  labs(title="Number of Occurrences by Continent and Cluster",
+       x="Cluster",
+       y="Count",
+       fill="Continent") +
+  theme_minimal()
 ```
 
-Analysis
-
-Based on the percentage:
-Cluster 1 (Red) - Asia: This cluster has a high concentration of Asian countries, with about 38.78% of 
-Asian countries falling into this cluster. This suggests that a significant portion of Asian countries 
-share similar SDG progress rates and income levels. The graph suggests this cluster tends to have a lower 
-SDG progress rate and a wide range of income scores.
-
-Cluster 2 (Green) - Americas: For Cluster 2, the highest proportion of countries comes from the Americas, 
-with roughly 28.57% representation. These countries share similarities in their SDG progress and income levels, 
-and looking at the graph, they are generally clustered in the mid-range for both SDG progress rate and income scores.
-
-Cluster 3 (Dark Blue) - Europe: Half of the European countries are represented in Cluster 3. This indicates 
-a strong grouping of European countries with similar SDG velocity and higher income levels, as depicted 
-by their placement on the graph.
-
-Cluster 4 (Light Blue) - Africa: A significant proportion, of African countries are in Cluster 4. 
-This number exceeds 100% due to normalization based on the total number of countries in Africa; it suggests 
-that nearly all African countries might be represented in this cluster. These countries, as shown on the graph,
- have a lower SDG progress rate and income scores.
-
-for this one, i do not know why it exceeds.
+Analysis：
 
 Based on the counts:
 Cluster 1: Asia and Europe are the top two continents, with 19 and 15 countries, respectively. This cluster suggests
@@ -557,15 +592,6 @@ Cluster 4: This cluster is heavily weighted towards African countries, with 25 r
  income scores and SDG progress rates. The presence of some Asian countries implies that there are nations in Asia with 
 similar developmental patterns to a substantial portion of Africa.
 
-This detailed breakdown shows not only the predominant continents in each cluster but also a secondary influence. For instance, 
-while Europe dominates Cluster 3, there are also a few Asian countries that have similar characteristics to this mostly European
-cluster. Similarly, the Asian presence in Cluster 1 along with Europe suggests some overlap in developmental or economic profiles 
-between these regions within the cluster.
-
-It is also interesting to note the significant presence of Asia across all clusters, indicating the continent's diversity in 
-terms of development and income levels. Meanwhile, Africa's strong presence in Clusters 2 and 4 could be indicative of common 
-development challenges or stages among these countries.
-
 To answer the research question:
 
 The average "Rate of Progress" on SDGs appears to vary between continents. Asian countries are spread across all clusters, indicating 
@@ -581,31 +607,11 @@ suggests that there is a correlation between higher income and a higher rate of 
 These observations can help policymakers and researchers to better understand the link between income levels and SDG progress rates, 
 tailoring their strategies to address the unique challenges and strengths within each continent.
 
-
 Based on the visualization of the boxplot, 
 
 The analysis of the "Rate of Progress" towards sustainable development goals across continents reveals a clear discrepancy influenced 
 by economic factors. Median velocity, serving as a proxy for this progress, showcases significant variations that align closely with 
 the relative wealth of each continent.
-
-Africa, with the lowest median velocity of 59, is indicative of a slower rate of progress. This trend is consistent with the continent's 
-broader economic challenges, which may hinder its ability to prioritize and fund sustainable development initiatives effectively. Africa's 
-pace suggests that despite potential efforts, the continent's countries may be struggling to match the speed of development seen 
-elsewhere, potentially due to infrastructural deficits, governance issues, or external debt burdens that limit available resources for such progress.
-
-In contrast, Europe's median velocity of 68 represents the highest among the continents, signaling an accelerated pace in striving
-towards sustainable development goals. Europe's strong performance is likely a reflection of its higher income levels, which correlate 
-with the ability to allocate substantial funds and resources towards achieving developmental benchmarks. European countries generally
-benefit from robust economic systems, political stability, and advanced technologies, which collectively facilitate progress.
-
-The Americas and Asia, with median velocities of 64 and 64.5, respectively, suggest a moderate rate of progress. The Americas' rate reflects 
-the dichotomy within the continent, where advanced economies such as the United States and Canada likely drive much of the progress, balanced 
-by slower rates in Central and South American countries. Asia's slightly higher velocity may reflect the rapid development of certain economies 
-within the continent, such as China and India, which may elevate the continent's average despite slower progress in other Asian countries.
-
-Oceania's median velocity of 55, the lowest next to Africa, is influenced by the unique challenges faced by many of its island nations. Issues 
-like geographic isolation, climate change impact, and limited natural resources could impede the rate of development, despite the presence of
-high-income countries like Australia within the continent.
 
 The examination of velocity in relation to income groups further reinforces the connection between economic status and development rate. 
 The progression from a median velocity of 58 in low-income countries to 67.5 in high-income countries indicates a positive correlation between
@@ -618,28 +624,6 @@ unique circumstances that affect its progress rate, the overall trend suggests t
 able to make strides more rapidly towards achieving sustainable development goals. This underscores the importance of economic growth and stability 
 as foundational elements for advancing global development agendas. 
 
-```{r}
-
-#proportion variable for Q2
-
-bar_proportions <- full_merged %>%
-  group_by(continent, income_group) %>% 
-  summarise(n=n())
-
-bar_proportions <- tibble(bar_proportions %>%
-  mutate(continent_count = 
-             case_when(
-               continent == 'Africa' ~ 43,
-               continent == 'Americas' ~ 27,
-               continent == 'Asia' ~ 42,
-               continent == 'Europe' ~ 39,
-               continent == 'Oceania' ~ 4
-             )) %>%
-     group_by(continent, income_group) %>%
-    summarise(n=n, income_group = income_group, 'proportion/continent' = n/continent_count, 'proportion/world total' = n/195))
-
-bar_proportions
-```
 Above, we created a table that shows the number of countries in different classifications of continents and income group.
 
 ```{r}
@@ -678,6 +662,8 @@ full_merged |> ggplot(aes(x= income_score, y=velocity, color=continent)) + geom_
 continent_averages |> ggplot(aes(x= average_income_score, y=average_velocity, color=continent)) + geom_point() + labs(title= 'Velocity and income (Continent averages)', y= "Velocity", x = "Income score") + scale_x_continuous(limits = c(0, 1)) + scale_y_continuous(limits = c(55, 70))
 ```
 In the graph above, we compare the Income scores of countries with the velocity. Again, the higher the income score, the higher the velocity. We can see where continents would place on our second graph if we took their average income score and velocity for each country in the continent.
+
+
 
 **Q3 Methods** 
 
