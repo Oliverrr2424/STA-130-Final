@@ -722,17 +722,34 @@ Next, we'll use bootstrapping to generate confidence intervals for estimated tim
 ```{r}
 set.seed(10293)
 
+boot_means <- rep(NA, 1000)
+for(i in 1:1000)
+{
+  boot_samp <- full_merged %>% sample_n(size=200, replace=TRUE)
+  boot_means[i] <- as.numeric(boot_samp |> summarise(mean_estimated_time = mean(time_to_goal)))
+}
+boot_means <- tibble(mean_estimated_time = boot_means)
+
+quantile(boot_means$mean_estimated_time, c(0.025,0.975))
+```
+From this, we can say that we are 95% confident that the mean estimated time for countries overall (in the world, not divided into continents) to complete their SDGs are between 49-54 years (using our assumptions used to create the time_to_goal variable).
+
+
+Next, we'll repeat the tests selecting countries by continent.
+```{r}
+set.seed(10293)
+
 boot_means_eu <- rep(NA, 1000)
 for(i in 1:1000)
 {
   boot_samp_eu <- european %>% sample_n(size=200, replace=TRUE)
   boot_means_eu[i] <- as.numeric(boot_samp_eu |> summarise(mean_estimated_time = mean(time_to_goal)))
 }
-boot_means_eu <- tibble(mean_estimated_time = boot_means)
+boot_means_eu <- tibble(mean_estimated_time = boot_means_eu)
 
 quantile(boot_means_eu$mean_estimated_time, c(0.025,0.975))
 ```
-From this, we can say that we are 95% confident that the mean estimated time for European countries to complete their SDGs are between 30.65-32.13 years (using our assumptions used to create the time_to_goal variable).
+For European countries 30.65-32.13 years. 
 
 ```{r}
 set.seed(10293)
@@ -795,6 +812,14 @@ boot_means_oc <- tibble(mean_estimated_time=boot_means_oc)
 quantile(boot_means_oc$mean_estimated_time, c(0.025,0.975))
 ```
 For Oceania, it is 48.5-53.9 years
+
+Altogether, here are the estimated mean time for SDG completion with 95% confidence:
+World: 49-54 years
+Europe: 30.65-32.13 years 
+Africa: 70.95-75.14 years
+Asia: 48.8-51.5 years
+Oceania: 48.5-53.9 years
+America: 47.4-50.3 years
 
 **Q3 visualizations** 
 ```{r}
