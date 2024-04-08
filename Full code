@@ -12,15 +12,16 @@ All right summary of the data set objects:
 **african**, **american**, **asian**, **european** and **oceanian** divides the countries into their respective continents as listed on the *country_codes.csv* file
 
 **high_income**, **upper_mid**, **lower_mid**, **low_income** and **NA_income** divides the countries into their respective income levels as listed on the *sdr_fd5e4b5a.csv* or *goal_file* 
-[Note: NA income means that the income level of that country is not listed]
-
-*Stuff still needed*
-1: NA values found in SDG index scores
-2: NA values found in income levels
-3: Understand what Percentage missing values mean
-
-*What to do next:*
-1: Decide how to filter the NA values
+Data cleaning summary:
+- Selected variables we needed
+- Merged the 3 data sets into one file
+- Renamed variables
+- Removed rows with NA values on income_group and index_score (sdg_index_score)
+- Quantified income_group, mutated into a new variable income_score
+- Quantified trends and dashes
+- Averaged the quantified trend variables, mutated into 'velocity'
+- Divided and created new data objects based on income_group and continent
+- Q3: Mutated 'time_to_goal' using index_score and velocity
 
 ```{r}
 library(readr)
